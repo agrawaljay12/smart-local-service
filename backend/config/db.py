@@ -2,5 +2,5 @@ from pymongo import MongoClient
 
 client = MongoClient('mongodb://localhost:27017/')
 
-db = client['users_database']
+db = client['smart_local_services']
 

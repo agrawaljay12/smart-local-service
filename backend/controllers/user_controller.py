@@ -2,15 +2,15 @@
 import re
 from config.db import db
 from models.users import User
-from fastapi import HTTPException, Request ,status
-# from bson import ObjectId 
-# from typing import List,Dict
+from fastapi import HTTPException, Request
 from core.core import hash_password,verify_password,create_access_token
 from core import message
 from core import http_status
 from core import response
 
+
 user_collection = db["users"]
+
 
 
 # create a new user function
