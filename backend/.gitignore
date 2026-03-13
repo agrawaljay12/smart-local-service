@@ -17,3 +17,5 @@ venv/
 # IDEs
 .vscode/
 .idea/
+
+backend/static/uploads/
