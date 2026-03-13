@@ -1,9 +1,9 @@
 from fastapi_mail import ConnectionConfig
 
 conf = ConnectionConfig(
-    MAIL_USERNAME="your_email@gmail.com",
-    MAIL_PASSWORD="your_app_password",
-    MAIL_FROM="your_email@gmail.com",
+    MAIL_USERNAME="agrawaljay247@gmail.com",
+    MAIL_PASSWORD="ghcovcwyciynhnpw",
+    MAIL_FROM="agrawaljay247@gmail.com",
     MAIL_PORT=587,
     MAIL_SERVER="smtp.gmail.com",
     MAIL_STARTTLS=True,

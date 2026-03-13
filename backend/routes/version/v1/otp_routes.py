@@ -31,5 +31,5 @@ async def generate_otp_route(request:Request):
 # method: POST
 # description : WELCOME TO API HOME 
 @router.post('/verify',response_description="OTP Verifyed successfully")
-async def verify_otp_route(email:str, otp:str):
-    return await verify_otp(email, otp)
+async def verify_otp_route(request:Request):
+    return await verify_otp(request)

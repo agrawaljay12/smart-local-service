@@ -47,19 +47,53 @@ async def generate_otp(request:Request):
         raise HTTPException(status_code=500, detail=str(e))
     
 # ---------------------verify the otp and check if it is valid and not expired------------------------
-async def verify_otp(email:str, otp:str):
+async def verify_otp(request: Request):
     try:
-        # find the OTP record for the given email
-        otp_record = otp_collection.find_one({"email": email, "otp": otp})
-        
+        data = await request.json()
+
+        email = data.get("email")
+        otp = data.get("otp")
+
+        if not email or not otp:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Email and OTP are required"
+            )
+
+        # normalize values
+        email = email.strip().lower()
+        otp = str(otp).strip()
+
+        print(email)
+        print(otp)
+
+        # check if email exists
+        email_record = otp_collection.find_one({"email": email})
+        print("Email Record:", email_record)
+
+        # find OTP record
+        otp_record = otp_collection.find_one({
+            "email": email,
+            "otp": otp
+        })
+        print(otp_collection.find())
+
         if not otp_record:
-            raise HTTPException(status_code=400, detail="Invalid OTP")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP"
+            )
 
-        # check if the OTP has expired
-        if datetime.utcnow() > datetime.fromisoformat(otp_record["expires_at"]):
-            raise HTTPException(status_code=400, detail="OTP has expired")
+        # check expiration
+        expires_at = otp_record.get("expires_at")
 
-        # if OTP is valid and not expired, delete it from the database
+        if datetime.utcnow() > expires_at:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP has expired"
+            )
+
+        # delete OTP after verification
         otp_collection.delete_one({"_id": otp_record["_id"]})
 
         return JSONResponse(
@@ -69,6 +103,12 @@ async def verify_otp(email:str, otp:str):
                 "message": "OTP verified successfully"
             }
         )
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e)
+        )
