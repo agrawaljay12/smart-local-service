@@ -162,5 +162,52 @@ async def get_all_users() -> list[dict]:
             status_code=http_status.INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+    
+
+# forgot pssword 
+async def forgot_password(request:Request):
+    try:
+        data = await request.json()
+        email = data.get("email")
+        confirm_password = data.get("confirm_password")
+        password = data.get("password")
+
+        if not email:
+            raise HTTPException(
+                status_code=http_status.BAD_REQUEST,
+                detail=message.REQUIRED_FIELDS_MISSING
+            )
+        
+        if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', email):
+            raise HTTPException(
+                status_code=http_status.BAD_REQUEST,
+                detail=message.INVALID_EMAIL_FORMAT
+            )   
+
+        if not password or not confirm_password:
+            raise HTTPException(
+                status_code=http_status.BAD_REQUEST,
+                detail=message.REQUIRED_FIELDS_MISSING
+            )       
+        
+        user = user_collection.find_one({"email":email})
+        if not user:
+            raise HTTPException(
+                status_code=http_status.NOT_FOUND,
+                detail=message.USER_NOT_FOUND
+            )
+        
+        user_collection.update_one(
+            {"email": email},
+            {"$set": {"password": hash_password(password)}}
+        )
+
+        # logic for sending reset password link to user's email will be implemented here in future.
+        return response.success_response(
+            message="Password reset successful"
+        )
+
+    except HTTPException as e:
+        raise e
      
    
