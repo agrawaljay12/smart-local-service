@@ -7,6 +7,7 @@ from core.core import hash_password,verify_password,create_access_token
 from core import message
 from core import http_status
 from core import response
+from datetime import datetime
 
 
 user_collection = db["users"]
@@ -22,6 +23,9 @@ async def create_user(request:Request):
         name = data.get("name")
         email = data.get("email")
         password = data.get("password")
+        phone_no = data.get("phone_no")
+        address = data.get("address")
+        status = data.get("status", "active")  # default status is active
 
 
         # --------------------------validations logic for fields ----------------------------
@@ -69,7 +73,11 @@ async def create_user(request:Request):
         user_data = User(
             name=name,
             email=email,
-            password=hashed_password
+            password=hashed_password,
+            phone_no=phone_no,
+            address=address,
+            status=status,
+            created_at=datetime.now().isoformat()
         )
         result = user_collection.insert_one(user_data.model_dump())
 
