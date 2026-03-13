@@ -1,1 +1,128 @@
+@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Work+Sans:wght@300;400;500;600;700&display=swap");
+
 @import "tailwindcss";
+
+/* CSS Variables for Consistent Theming */
+:root {
+  /* Primary Colors - Teal (Trust & Energy) */
+  --primary-600: #0891b2;
+  --primary-700: #0e7490;
+  --primary-800: #155e75;
+  --primary-50: #cffafe;
+  --primary-100: #cffafe;
+
+  /* Secondary Colors - Green (Growth & Reliability) */
+  --secondary-600: #10b981;
+  --secondary-700: #059669;
+  --secondary-50: #ecfdf5;
+
+  /* Neutral Colors - White/Black Focus */
+  --neutral-900: #000000;
+  --neutral-800: #1a1a1a;
+  --neutral-700: #333333;
+  --neutral-600: #4d4d4d;
+  --neutral-500: #666666;
+  --neutral-300: #cccccc;
+  --neutral-200: #e6e6e6;
+  --neutral-100: #f0f0f0;
+  --neutral-50: #ffffff;
+
+  /* Accent Colors */
+  --accent-orange: #f97316;
+  --accent-yellow: #fbbf24;
+  --accent-green: #10b981;
+  --accent-red: #ef4444;
+
+  /* Font Families - Modern & Professional */
+  --font-outfit: "Outfit", sans-serif;
+  --font-worksans: "Work Sans", sans-serif;
+}
+
+/* Global Typography */
+body {
+  font-family: var(--font-worksans);
+  color: var(--neutral-700);
+  line-height: 1.6;
+}
+
+/* Headings */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit);
+  font-weight: 700;
+  color: var(--neutral-900);
+  line-height: 1.2;
+}
+
+h1 {
+  font-size: 3rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+h4 {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+h5 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h6 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+/* Body Text */
+p {
+  font-family: var(--font-worksans);
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--neutral-600);
+}
+
+.text-sm {
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.text-xl {
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+/* Links and Interactions */
+a {
+  font-family: var(--font-worksans);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+button,
+.button {
+  font-family: var(--font-outfit);
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
