@@ -87,6 +87,10 @@ async def verify_otp(request: Request):
         # check expiration
         expires_at = otp_record.get("expires_at")
 
+        # Parse ISO string to datetime
+        if isinstance(expires_at, str):
+            expires_at = datetime.fromisoformat(expires_at)
+
         if datetime.utcnow() > expires_at:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

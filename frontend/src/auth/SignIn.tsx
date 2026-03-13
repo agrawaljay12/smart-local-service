@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
+import { USER_ENDPOINTS, VALIDATION } from "../config/api";
 
 export function SignIn() {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -13,39 +15,68 @@ export function SignIn() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const [serverError, setServerError] = useState('');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!validateEmail(formData.email)) {
+    } else if (!VALIDATION.EMAIL.test(formData.email.trim())) {
       newErrors.email = 'Invalid email format';
     }
+
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
+    setServerError('');
+
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(USER_ENDPOINTS.login, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setServerError(data.detail || 'Login failed');
         setLoading(false);
-        alert('Sign in successful!');
-      }, 1500);
+        return;
+      }
+
+      // Success - Store token and user data
+      const { access_token, user } = data.data || data;
+      
+      localStorage.setItem('access_token', access_token);
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      if (rememberMe) {
+        localStorage.setItem('rememberMe', 'true');
+      }
+
+      // Redirect to home
+      navigate('/');
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -63,6 +94,11 @@ export function SignIn() {
   const containerBg = {
     backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
     color: theme === 'dark' ? '#ffffff' : '#000000'
+  };
+
+  const errorStyle = {
+    color: '#ef4444',
+    fontFamily: 'var(--font-worksans)'
   };
 
   return (
@@ -89,6 +125,13 @@ export function SignIn() {
             </p>
           </div>
 
+          {/* Server Error Alert */}
+          {serverError && (
+            <div style={{ color: '#ef4444', backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' }} className="p-3 rounded-lg mb-5 text-sm">
+              {serverError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email Field */}
             <div>
@@ -104,29 +147,16 @@ export function SignIn() {
                 }}
                 placeholder="you@example.com"
                 style={inputStyle}
-                className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
               />
-              {errors.email && (
-                <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                  {errors.email}
-                </p>
-              )}
+              {errors.email && <p style={errorStyle} className="mt-2 text-sm">{errors.email}</p>}
             </div>
 
             {/* Password Field */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <label style={labelStyle} className="text-sm font-semibold">
-                  Password
-                </label>
-                <Link
-                  to="/auth/forgot-password"
-                  style={{ color: '#0891b2', fontFamily: 'var(--font-worksans)' }}
-                  className="text-xs hover:underline font-medium"
-                >
-                  Forgot?
-                </Link>
-              </div>
+              <label style={labelStyle} className="block text-sm font-semibold mb-2">
+                Password
+              </label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -135,102 +165,92 @@ export function SignIn() {
                     setFormData({ ...formData, password: e.target.value });
                     if (errors.password) setErrors({ ...errors, password: '' });
                   }}
-                  placeholder="••••••••"
+                  placeholder="Your password"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all pr-10"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{ color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:opacity-80 transition-opacity"
+                  style={{ color: '#0891b2' }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-80 transition-opacity"
                 >
                   {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                 </button>
               </div>
-              {errors.password && (
-                <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                  {errors.password}
-                </p>
-              )}
+              {errors.password && <p style={errorStyle} className="mt-2 text-sm">{errors.password}</p>}
             </div>
 
-            {/* Remember Me */}
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                style={{ accentColor: '#0891b2' }}
-                className="w-4 h-4 rounded cursor-pointer"
-              />
-              <label
-                htmlFor="remember"
-                style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                className="ml-2 text-sm cursor-pointer"
-              >
-                Remember me
+            {/* Remember Me & Forgot Password */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  style={{ accentColor: '#0891b2' }}
+                  className="w-4 h-4"
+                />
+                <span style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-sm">
+                  Remember me
+                </span>
               </label>
+              <Link
+                to="/auth/forgot-password"
+                style={{ color: '#0891b2', fontFamily: 'var(--font-worksans)' }}
+                className="text-sm font-semibold hover:underline"
+              >
+                Forgot Password?
+              </Link>
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading ? '#666666' : '#0891b2', color: '#ffffff' }}
-              className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed"
+              style={{ fontFamily: 'var(--font-worksans)' }}
+              className="w-full bg-gradient-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
             >
               {loading ? 'Signing In...' : 'Sign In'}
             </button>
 
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-6">
+              <div style={{ backgroundColor: theme === 'dark' ? '#333333' : '#e5e5e5' }} className="flex-1 h-px"></div>
+              <span style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#888888' : '#999999' }} className="text-sm">
+                OR
+              </span>
+              <div style={{ backgroundColor: theme === 'dark' ? '#333333' : '#e5e5e5' }} className="flex-1 h-px"></div>
+            </div>
+
+            {/* Social Login Buttons */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={loading}
+                style={{ backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f5f5f5', fontFamily: 'var(--font-worksans)' }}
+                className="flex-1 px-4 py-2 rounded-lg border border-[#0891b2] hover:opacity-80 transition-opacity disabled:opacity-50 font-semibold text-sm"
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                style={{ backgroundColor: theme === 'dark' ? '#1a1a1a' : '#f5f5f5', fontFamily: 'var(--font-worksans)' }}
+                className="flex-1 px-4 py-2 rounded-lg border border-[#0891b2] hover:opacity-80 transition-opacity disabled:opacity-50 font-semibold text-sm"
+              >
+                GitHub
+              </button>
+            </div>
+
             {/* Sign Up Link */}
-            <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm">
+            <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm mt-4">
               Don't have an account?{' '}
-              <Link to="/auth/signup" style={{ color: '#0891b2' }} className="font-semibold hover:underline">
+              <Link to="/auth/signup" style={{ color: '#0891b2', fontWeight: 'bold' }} className="hover:underline">
                 Sign Up
               </Link>
             </p>
           </form>
-
-          {/* Divider */}
-          <div className="my-6 flex items-center gap-4">
-            <div style={{ backgroundColor: theme === 'dark' ? '#333333' : '#e5e5e5' }} className="flex-1 h-px"></div>
-            <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#888888' : '#999999' }} className="text-xs">
-              OR
-            </p>
-            <div style={{ backgroundColor: theme === 'dark' ? '#333333' : '#e5e5e5' }} className="flex-1 h-px"></div>
-          </div>
-
-          {/* Social Login */}
-          <div className="space-y-3">
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme === 'dark' ? '#111111' : '#f5f5f5',
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
-                borderWidth: '2px',
-                fontFamily: 'var(--font-worksans)'
-              }}
-              className="w-full px-4 py-3 font-semibold rounded-lg hover:opacity-80 transition-opacity"
-            >
-              Continue with Google
-            </button>
-            <button
-              type="button"
-              style={{
-                backgroundColor: theme === 'dark' ? '#111111' : '#f5f5f5',
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
-                borderWidth: '2px',
-                fontFamily: 'var(--font-worksans)'
-              }}
-              className="w-full px-4 py-3 font-semibold rounded-lg hover:opacity-80 transition-opacity"
-            >
-              Continue with GitHub
-            </button>
-          </div>
         </div>
       </div>
     </div>

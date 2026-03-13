@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaCheck } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
+import { USER_ENDPOINTS, OTP_ENDPOINTS, VALIDATION } from "../config/api";
 
 export function SignUp() {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [formData, setFormData] = useState({
     name: '',
@@ -15,28 +17,33 @@ export function SignUp() {
   const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
+  const [serverError, setServerError] = useState('');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    // Validate name
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
+    } else if (!VALIDATION.NAME.test(formData.name.trim())) {
+      newErrors.name = 'Name must contain only letters and spaces';
     }
+
+    // Validate email
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!validateEmail(formData.email)) {
+    } else if (!VALIDATION.EMAIL.test(formData.email.trim())) {
       newErrors.email = 'Invalid email format';
     }
+
+    // Validate password - Backend requires: Start uppercase, 8-15 chars, lowercase, digit, special char
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (!VALIDATION.PASSWORD.test(formData.password)) {
+      newErrors.password = 'Password must: Start with uppercase, be 8-15 chars, contain lowercase, digit, and special character (e.g., Password123!)';
     }
+
+    // Validate confirm password
     if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -45,36 +52,126 @@ export function SignUp() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) {
-      setLoading(true);
-      // Simulate API call to check email and send OTP
-      setTimeout(() => {
+    setServerError('');
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Step 1: Create user
+      const createResponse = await fetch(USER_ENDPOINTS.create, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          password: formData.password
+        })
+      });
+
+      const createData = await createResponse.json();
+
+      if (!createResponse.ok) {
+        setServerError(createData.detail || 'Failed to create account');
         setLoading(false);
-        setStep('otp');
-      }, 1500);
+        return;
+      }
+
+      // Step 2: Generate OTP
+      const otpResponse = await fetch(OTP_ENDPOINTS.generate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email.trim() })
+      });
+
+      const otpData = await otpResponse.json();
+
+      if (!otpResponse.ok) {
+        setServerError(otpData.detail || 'Failed to send OTP');
+        setLoading(false);
+        return;
+      }
+
+      // Move to OTP step
+      setStep('otp');
+      setErrors({});
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
   const validateOTP = () => {
-    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
-      setErrors({ otp: 'OTP must be 6 digits' });
+    if (!VALIDATION.OTP.test(otp)) {
+      setErrors({ otp: 'OTP must be exactly 6 digits' });
       return false;
     }
     return true;
   };
 
-  const handleVerifyOTP = (e: React.FormEvent) => {
+  const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateOTP()) {
-      setLoading(true);
-      // Simulate API call to verify OTP and create account
-      setTimeout(() => {
+    setServerError('');
+
+    if (!validateOTP()) {
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Verify OTP
+      const verifyResponse = await fetch(OTP_ENDPOINTS.verify, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email.trim(),
+          otp: otp
+        })
+      });
+
+      const verifyData = await verifyResponse.json();
+
+      if (!verifyResponse.ok) {
+        setServerError(verifyData.detail || 'Failed to verify OTP');
         setLoading(false);
-        // Redirect to sign in or home
-        alert('Account created successfully! Please sign in.');
-      }, 1500);
+        return;
+      }
+
+      // Success - show message and redirect
+      alert('Account created successfully! Please sign in.');
+      navigate('/auth/signin');
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setServerError('');
+    setLoading(true);
+    try {
+      const response = await fetch(OTP_ENDPOINTS.generate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setServerError(data.detail || 'Failed to resend OTP');
+      } else {
+        alert('OTP sent successfully!');
+      }
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,6 +191,17 @@ export function SignUp() {
     color: theme === 'dark' ? '#ffffff' : '#000000'
   };
 
+  const errorStyle = {
+    color: '#ef4444',
+    fontFamily: 'var(--font-worksans)'
+  };
+
+  const successStyle = {
+    backgroundColor: theme === 'dark' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+    color: '#10b981',
+    fontFamily: 'var(--font-worksans)'
+  };
+
   return (
     <div style={containerBg} className="min-h-screen flex flex-col">
       {/* Back Button */}
@@ -111,12 +219,19 @@ export function SignUp() {
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
             <h1 style={{ fontFamily: 'var(--font-outfit)', color: theme === 'dark' ? '#ffffff' : '#000000' }} className="text-4xl font-black mb-2">
-              Join Us Today
+              Create Account
             </h1>
             <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-sm">
-              Create your Smart Local account
+              Join Smart Local Services today
             </p>
           </div>
+
+          {/* Server Error Alert */}
+          {serverError && (
+            <div style={{ ...errorStyle, backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' }} className="p-3 rounded-lg mb-5 text-sm">
+              {serverError}
+            </div>
+          )}
 
           {step === 'form' ? (
             <form onSubmit={handleSubmitForm} className="space-y-5">
@@ -134,13 +249,9 @@ export function SignUp() {
                   }}
                   placeholder="John Doe"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.name && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.name}
-                  </p>
-                )}
+                {errors.name && <p style={errorStyle} className="mt-2 text-sm">{errors.name}</p>}
               </div>
 
               {/* Email Field */}
@@ -157,13 +268,9 @@ export function SignUp() {
                   }}
                   placeholder="you@example.com"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.email && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.email}
-                  </p>
-                )}
+                {errors.email && <p style={errorStyle} className="mt-2 text-sm">{errors.email}</p>}
               </div>
 
               {/* Password Field */}
@@ -178,15 +285,14 @@ export function SignUp() {
                     setFormData({ ...formData, password: e.target.value });
                     if (errors.password) setErrors({ ...errors, password: '' });
                   }}
-                  placeholder="••••••••"
+                  placeholder="Password123!"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.password && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.password}
-                  </p>
-                )}
+                {errors.password && <p style={errorStyle} className="mt-2 text-sm">{errors.password}</p>}
+                <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#888888' : '#999999' }} className="mt-2 text-xs">
+                  Must: Start uppercase, 8-15 chars, have lowercase, digit, special char
+                </p>
               </div>
 
               {/* Confirm Password Field */}
@@ -201,113 +307,79 @@ export function SignUp() {
                     setFormData({ ...formData, confirmPassword: e.target.value });
                     if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
                   }}
-                  placeholder="••••••••"
+                  placeholder="Confirm password"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.confirmPassword && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.confirmPassword}
-                  </p>
-                )}
+                {errors.confirmPassword && <p style={errorStyle} className="mt-2 text-sm">{errors.confirmPassword}</p>}
               </div>
 
               {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading}
-                style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading ? '#666666' : '#0891b2', color: '#ffffff' }}
-                className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-worksans)' }}
+                className="w-full bg-linear-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
               >
-                {loading ? 'Creating Account...' : 'Continue'}
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
 
               {/* Sign In Link */}
               <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm">
                 Already have an account?{' '}
-                <Link to="/auth/signin" style={{ color: '#0891b2' }} className="font-semibold hover:underline">
+                <Link to="/auth/signin" style={{ color: '#0891b2', fontWeight: 'bold' }} className="hover:underline">
                   Sign In
                 </Link>
               </p>
             </form>
           ) : (
-            <form onSubmit={handleVerifyOTP} className="space-y-6">
-              <div className="text-center mb-6">
-                <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-sm">
-                  We've sent a 6-digit verification code to
-                </p>
-                <p style={{ fontFamily: 'var(--font-outfit)', color: '#0891b2' }} className="font-semibold mt-1">
-                  {formData.email}
-                </p>
+            <form onSubmit={handleVerifyOTP} className="space-y-5">
+              <div style={successStyle} className="p-4 rounded-lg text-center">
+                <FaCheck className="mx-auto mb-2" size={24} />
+                <p style={{ fontFamily: 'var(--font-worksans)' }} className="font-semibold">Check Your Email</p>
+                <p style={{ fontFamily: 'var(--font-worksans)', fontSize: '0.875rem' }}>We sent a 6-digit OTP to {formData.email}</p>
               </div>
 
-              {/* OTP Input */}
+              {/* OTP Field */}
               <div>
                 <label style={labelStyle} className="block text-sm font-semibold mb-2">
-                  Enter OTP
+                  Enter OTP Code
                 </label>
                 <input
                   type="text"
                   value={otp}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                    setOtp(val);
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(value);
                     if (errors.otp) setErrors({ ...errors, otp: '' });
                   }}
                   placeholder="000000"
                   maxLength={6}
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-center text-2xl tracking-widest font-mono"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 text-center text-2xl tracking-widest transition-all"
                 />
-                {errors.otp && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.otp}
-                  </p>
-                )}
+                {errors.otp && <p style={errorStyle} className="mt-2 text-sm">{errors.otp}</p>}
               </div>
 
-              {/* Verify Button */}
+              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading || otp.length !== 6 ? '#666666' : '#0891b2', color: '#ffffff' }}
-                className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ fontFamily: 'var(--font-worksans)' }}
+                className="w-full bg-linear-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
               >
-                {loading ? 'Verifying...' : (
-                  <>
-                    <FaCheck size={16} />
-                    Verify & Create Account
-                  </>
-                )}
+                {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
 
-              {/* Resend OTP */}
-              <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm">
-                Didn't receive code?{' '}
-                <button
-                  type="button"
-                  style={{ color: '#0891b2' }}
-                  className="font-semibold hover:underline focus:outline-none"
-                  onClick={() => {
-                    setLoading(true);
-                    setTimeout(() => {
-                      setLoading(false);
-                      alert('OTP resent to your email');
-                    }, 1000);
-                  }}
-                >
-                  Resend OTP
-                </button>
-              </p>
-
-              {/* Back to Form */}
+              {/* Resend OTP Button */}
               <button
                 type="button"
-                onClick={() => setStep('form')}
-                style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                className="w-full text-sm hover:underline"
+                onClick={handleResendOTP}
+                disabled={loading}
+                style={{ fontFamily: 'var(--font-worksans)', color: '#0891b2' }}
+                className="w-full border-2 border-[#0891b2] py-3 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 font-semibold"
               >
-                ← Back to Form
+                Resend OTP
               </button>
             </form>
           )}

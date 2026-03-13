@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaEye, FaEyeSlash, FaCheck } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
+import { OTP_ENDPOINTS, USER_ENDPOINTS, VALIDATION } from "../config/api";
 
 export function ForgotPassword() {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [step, setStep] = useState<'email' | 'otp' | 'password'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -14,19 +16,16 @@ export function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [serverError, setServerError] = useState('');
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const handleEmailSubmit = (e: React.FormEvent) => {
+  const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     const newErrors: Record<string, string> = {};
 
     if (!email.trim()) {
       newErrors.email = 'Email is required';
-    } else if (!validateEmail(email)) {
+    } else if (!VALIDATION.EMAIL.test(email.trim())) {
       newErrors.email = 'Invalid email format';
     }
 
@@ -36,42 +35,82 @@ export function ForgotPassword() {
     }
 
     setLoading(true);
-    // Simulate API call to send OTP
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch(OTP_ENDPOINTS.generate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setServerError(data.detail || 'Failed to send OTP');
+        setLoading(false);
+        return;
+      }
+
       setStep('otp');
       setErrors({});
-    }, 1500);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleOTPSubmit = (e: React.FormEvent) => {
+  const handleOTPSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     const newErrors: Record<string, string> = {};
 
-    if (otp.length !== 6 || !/^\d+$/.test(otp)) {
-      newErrors.otp = 'OTP must be 6 digits';
+    if (!VALIDATION.OTP.test(otp)) {
+      newErrors.otp = 'OTP must be exactly 6 digits';
       setErrors(newErrors);
       return;
     }
 
     setLoading(true);
-    // Simulate API call to verify OTP
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch(OTP_ENDPOINTS.verify, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          otp: otp
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setServerError(data.detail || 'Failed to verify OTP');
+        setLoading(false);
+        return;
+      }
+
       setStep('password');
       setErrors({});
-    }, 1500);
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePasswordSubmit = (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setServerError('');
     const newErrors: Record<string, string> = {};
 
+    // Validate new password
     if (!newPassword) {
       newErrors.newPassword = 'Password is required';
-    } else if (newPassword.length < 6) {
-      newErrors.newPassword = 'Password must be at least 6 characters';
+    } else if (!VALIDATION.PASSWORD.test(newPassword)) {
+      newErrors.newPassword = 'Password must: Start with uppercase, be 8-15 chars, contain lowercase, digit, and special character (e.g., Password123!)';
     }
+
+    // Validate confirm password
     if (newPassword !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
@@ -82,12 +121,65 @@ export function ForgotPassword() {
     }
 
     setLoading(true);
-    // Simulate API call to reset password
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const response = await fetch(USER_ENDPOINTS.forgotPassword, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: newPassword,
+          confirm_password: confirmPassword
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setServerError(data.detail || 'Failed to reset password');
+        setLoading(false);
+        return;
+      }
+
       alert('Password reset successfully! Please sign in with your new password.');
-      // Redirect to sign in
-    }, 1500);
+      navigate('/auth/signin');
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setServerError('');
+    setLoading(true);
+    try {
+      const response = await fetch(OTP_ENDPOINTS.generate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setServerError(data.detail || 'Failed to resend OTP');
+      } else {
+        alert('OTP sent successfully!');
+      }
+    } catch (error) {
+      setServerError(error instanceof Error ? error.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBackStep = () => {
+    if (step === 'otp') {
+      setStep('email');
+    } else if (step === 'password') {
+      setStep('otp');
+    }
+    setErrors({});
+    setServerError('');
   };
 
   const inputStyle = {
@@ -106,7 +198,16 @@ export function ForgotPassword() {
     color: theme === 'dark' ? '#ffffff' : '#000000'
   };
 
-  const progressBg = theme === 'dark' ? '#111111' : '#f5f5f5';
+  const errorStyle = {
+    color: '#ef4444',
+    fontFamily: 'var(--font-worksans)'
+  };
+
+  const successStyle = {
+    backgroundColor: theme === 'dark' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.05)',
+    color: '#10b981',
+    fontFamily: 'var(--font-worksans)'
+  };
 
   return (
     <div style={containerBg} className="min-h-screen flex flex-col">
@@ -123,29 +224,43 @@ export function ForgotPassword() {
       {/* Form Container */}
       <div className="flex-1 flex items-center justify-center px-4 py-12">
         <div className="w-full max-w-md">
-          {/* Progress Indicator */}
-          <div className="mb-8 flex gap-2">
-            {['email', 'otp', 'password'].map((s, i) => (
-              <div
-                key={s}
-                style={{
-                  backgroundColor: ['email', 'otp', 'password'].indexOf(step) >= i ? '#0891b2' : progressBg
-                }}
-                className="h-2 flex-1 rounded-full transition-colors duration-300"
-              ></div>
-            ))}
-          </div>
-
           <div className="text-center mb-8">
             <h1 style={{ fontFamily: 'var(--font-outfit)', color: theme === 'dark' ? '#ffffff' : '#000000' }} className="text-4xl font-black mb-2">
               Reset Password
             </h1>
             <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-sm">
-              {step === 'email' && 'Enter your email to get started'}
-              {step === 'otp' && 'Enter the 6-digit code sent to your email'}
-              {step === 'password' && 'Create a new strong password'}
+              Recover your account in 3 steps
             </p>
           </div>
+
+          {/* Progress Bar */}
+          <div className="flex gap-2 mb-8">
+            {[1, 2, 3].map((num) => (
+              <div
+                key={num}
+                style={{
+                  backgroundColor:
+                    step === 'email' && num === 1
+                      ? '#0891b2'
+                      : step === 'otp' && (num === 1 || num === 2)
+                      ? '#0891b2'
+                      : step === 'password'
+                      ? '#0891b2'
+                      : theme === 'dark'
+                      ? '#333333'
+                      : '#e5e5e5'
+                }}
+                className="flex-1 h-2 rounded-full transition-all"
+              ></div>
+            ))}
+          </div>
+
+          {/* Server Error Alert */}
+          {serverError && (
+            <div style={{ color: '#ef4444', backgroundColor: theme === 'dark' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(239, 68, 68, 0.05)' }} className="p-3 rounded-lg mb-5 text-sm">
+              {serverError}
+            </div>
+          )}
 
           {/* Step 1: Email */}
           {step === 'email' && (
@@ -163,27 +278,23 @@ export function ForgotPassword() {
                   }}
                   placeholder="you@example.com"
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.email && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.email}
-                  </p>
-                )}
+                {errors.email && <p style={errorStyle} className="mt-2 text-sm">{errors.email}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading ? '#666666' : '#0891b2', color: '#ffffff' }}
-                className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-worksans)' }}
+                className="w-full bg-linear-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
               >
-                {loading ? 'Sending Code...' : 'Send Reset Code'}
+                {loading ? 'Sending OTP...' : 'Send OTP'}
               </button>
 
               <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm">
                 Remember your password?{' '}
-                <Link to="/auth/signin" style={{ color: '#0891b2' }} className="font-semibold hover:underline">
+                <Link to="/auth/signin" style={{ color: '#0891b2', fontWeight: 'bold' }} className="hover:underline">
                   Sign In
                 </Link>
               </p>
@@ -192,79 +303,65 @@ export function ForgotPassword() {
 
           {/* Step 2: OTP */}
           {step === 'otp' && (
-            <form onSubmit={handleOTPSubmit} className="space-y-6">
-              <div className="text-center mb-6">
-                <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-sm">
-                  Verification code sent to
-                </p>
-                <p style={{ fontFamily: 'var(--font-outfit)', color: '#0891b2' }} className="font-semibold mt-1">
-                  {email}
-                </p>
+            <form onSubmit={handleOTPSubmit} className="space-y-5">
+              <div style={successStyle} className="p-4 rounded-lg text-center">
+                <FaCheck className="mx-auto mb-2" size={24} />
+                <p style={{ fontFamily: 'var(--font-worksans)' }} className="font-semibold">Check Your Email</p>
+                <p style={{ fontFamily: 'var(--font-worksans)', fontSize: '0.875rem' }}>We sent a 6-digit OTP to {email}</p>
               </div>
 
               <div>
                 <label style={labelStyle} className="block text-sm font-semibold mb-2">
-                  Enter 6-Digit Code
+                  Enter OTP Code
                 </label>
                 <input
                   type="text"
                   value={otp}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 6);
-                    setOtp(val);
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setOtp(value);
                     if (errors.otp) setErrors({ ...errors, otp: '' });
                   }}
                   placeholder="000000"
                   maxLength={6}
                   style={inputStyle}
-                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-center text-2xl tracking-widest font-mono"
+                  className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 text-center text-2xl tracking-widest transition-all"
                 />
-                {errors.otp && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.otp}
-                  </p>
-                )}
+                {errors.otp && <p style={errorStyle} className="mt-2 text-sm">{errors.otp}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading || otp.length !== 6}
-                style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading || otp.length !== 6 ? '#666666' : '#0891b2', color: '#ffffff' }}
-                className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed"
+                style={{ fontFamily: 'var(--font-worksans)' }}
+                className="w-full bg-linear-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
               >
-                {loading ? 'Verifying...' : 'Verify Code'}
+                {loading ? 'Verifying...' : 'Verify OTP'}
               </button>
 
-              <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }} className="text-center text-sm">
-                Didn't receive code?{' '}
+              <div className="flex gap-3">
                 <button
                   type="button"
-                  style={{ color: '#0891b2' }}
-                  className="font-semibold hover:underline focus:outline-none"
-                  onClick={() => {
-                    setLoading(true);
-                    setTimeout(() => {
-                      setLoading(false);
-                      alert('Code resent to your email');
-                    }, 1000);
-                  }}
+                  onClick={handleBackStep}
+                  style={{ fontFamily: 'var(--font-worksans)', color: '#0891b2' }}
+                  className="flex-1 border-2 border-[#0891b2] py-2 rounded-lg hover:opacity-80 transition-opacity font-semibold text-sm"
                 >
-                  Resend
+                  Change Email
                 </button>
-              </p>
-
-              <button
-                type="button"
-                onClick={() => setStep('email')}
-                style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                className="w-full text-sm hover:underline"
-              >
-                ← Back to Email
-              </button>
+                <button
+                  type="button"
+                  onClick={handleResendOTP}
+                  disabled={loading}
+                  style={{ fontFamily: 'var(--font-worksans)', color: '#0891b2' }}
+                  className="flex-1 border-2 border-[#0891b2] py-2 rounded-lg hover:opacity-80 transition-opacity disabled:opacity-50 font-semibold text-sm"
+                >
+                  Resend OTP
+                </button>
+              </div>
             </form>
           )}
 
-          {/* Step 3: New Password */}
+          {/* Step 3: Password */}
           {step === 'password' && (
             <form onSubmit={handlePasswordSubmit} className="space-y-5">
               <div>
@@ -279,24 +376,23 @@ export function ForgotPassword() {
                       setNewPassword(e.target.value);
                       if (errors.newPassword) setErrors({ ...errors, newPassword: '' });
                     }}
-                    placeholder="••••••••"
+                    placeholder="Password123!"
                     style={inputStyle}
-                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all pr-10"
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:opacity-80 transition-opacity"
+                    style={{ color: '#0891b2' }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-80 transition-opacity"
                   >
                     {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                   </button>
                 </div>
-                {errors.newPassword && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.newPassword}
-                  </p>
-                )}
+                {errors.newPassword && <p style={errorStyle} className="mt-2 text-sm">{errors.newPassword}</p>}
+                <p style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#888888' : '#999999' }} className="mt-2 text-xs">
+                  Must: Start uppercase, 8-15 chars, have lowercase, digit, special char
+                </p>
               </div>
 
               <div>
@@ -311,47 +407,38 @@ export function ForgotPassword() {
                       setConfirmPassword(e.target.value);
                       if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
                     }}
-                    placeholder="••••••••"
+                    placeholder="Confirm password"
                     style={inputStyle}
-                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all pr-10"
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{ color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 hover:opacity-80 transition-opacity"
+                    style={{ color: '#0891b2' }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 hover:opacity-80 transition-opacity"
                   >
                     {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                   </button>
                 </div>
-                {errors.confirmPassword && (
-                  <p style={{ color: '#ef4444', fontFamily: 'var(--font-worksans)' }} className="text-sm mt-1">
-                    {errors.confirmPassword}
-                  </p>
-                )}
+                {errors.confirmPassword && <p style={errorStyle} className="mt-2 text-sm">{errors.confirmPassword}</p>}
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                style={{ fontFamily: 'var(--font-outfit)', backgroundColor: loading ? '#666666' : '#0891b2', color: '#ffffff' }}
-                className="w-full px-4 py-3 font-bold rounded-lg hover:opacity-90 transition-opacity duration-200 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                style={{ fontFamily: 'var(--font-worksans)' }}
+                className="w-full bg-linear-to-r from-[#0891b2] to-[#06b6d4] text-white font-bold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 mt-6"
               >
-                {loading ? 'Resetting...' : (
-                  <>
-                    <FaCheck size={16} />
-                    Reset Password
-                  </>
-                )}
+                {loading ? 'Resetting...' : 'Reset Password'}
               </button>
 
               <button
                 type="button"
-                onClick={() => setStep('otp')}
-                style={{ fontFamily: 'var(--font-worksans)', color: theme === 'dark' ? '#aaaaaa' : '#666666' }}
-                className="w-full text-sm hover:underline"
+                onClick={handleBackStep}
+                style={{ fontFamily: 'var(--font-worksans)', color: '#0891b2' }}
+                className="w-full border-2 border-[#0891b2] py-2 rounded-lg hover:opacity-80 transition-opacity font-semibold"
               >
-                ← Back to Code
+                Back to OTP
               </button>
             </form>
           )}
