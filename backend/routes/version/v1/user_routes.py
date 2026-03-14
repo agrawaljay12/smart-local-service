@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends,Request, HTTPException,status
+from fastapi import APIRouter, Depends,Request,status
 from controllers.user_controller import create_user, forgot_password, get_all_users,login_user
 from core.dependency import get_required_role
 from fastapi.responses import JSONResponse
 # from config.db import get_database
-import re
+
 
 
 router = APIRouter()

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from routes.version.v1.user_routes import router as user_router
 from routes.version.v1.otp_routes import router as otp_router
+from routes.version.v1.service_routes import router as service_router
 
 # function to register all routes
 def register_routes(app: FastAPI):
@@ -17,6 +18,13 @@ def register_routes(app: FastAPI):
         otp_router,
         prefix="/api/v1/otp",
         tags=["otp"]
+    )
+
+    # http://127.0.0.1:8000/api/v1/services
+    app.include_router(
+        service_router,
+        prefix="/api/v1/services",
+        tags=["services"]
     )
 
 
