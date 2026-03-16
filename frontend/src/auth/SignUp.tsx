@@ -7,15 +7,18 @@ import { USER_ENDPOINTS, OTP_ENDPOINTS, VALIDATION } from "../config/api";
 export function SignUp() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [step, setStep] = useState<'email' | 'otp' | 'form'>('email');
-  const [] = useState('');
+  const [step, setStep] = useState<'form' | 'otp'>('form');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
     phone_no: '',
-    address: ''
+    street: '',
+    city: '',
+    state: '',
+    country: '',
+    postal_code: ''
   });
   const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -60,11 +63,27 @@ export function SignUp() {
       newErrors.phone_no = 'Phone must be in format: +countrycode + 7-14 digits (e.g., +919876543210)';
     }
 
-    // Validate address
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    } else if (!VALIDATION.ADDRESS.test(formData.address.trim())) {
-      newErrors.address = 'Address format: "street, city, state, country, postal_code" (e.g., "123 Main St, New York, NY, USA, 100001")';
+    // Validate address fields
+    if (!formData.street.trim()) {
+      newErrors.street = 'Street address is required';
+    }
+
+    if (!formData.city.trim()) {
+      newErrors.city = 'City is required';
+    }
+
+    if (!formData.state.trim()) {
+      newErrors.state = 'State/Province is required';
+    }
+
+    if (!formData.country.trim()) {
+      newErrors.country = 'Country is required';
+    }
+
+    if (!formData.postal_code.trim()) {
+      newErrors.postal_code = 'Postal code is required';
+    } else if (!/^\d{4,10}$/.test(formData.postal_code.trim())) {
+      newErrors.postal_code = 'Postal code must be 4-10 digits';
     }
 
     setErrors(newErrors);
@@ -90,7 +109,7 @@ export function SignUp() {
           email: formData.email.trim(),
           password: formData.password,
           phone_no: formData.phone_no.trim(),
-          address: formData.address.trim()
+          address: `${formData.street.trim()}, ${formData.city.trim()}, ${formData.state.trim()}, ${formData.country.trim()}, ${formData.postal_code.trim()}`
         })
       });
 
@@ -315,23 +334,97 @@ export function SignUp() {
                 {errors.phone_no && <p style={errorStyle} className="mt-2 text-sm">{errors.phone_no}</p>}
               </div>
 
-              {/* Address Field */}
+              {/* Address Fields */}
               <div>
                 <label style={labelStyle} className="block text-sm font-semibold mb-2">
-                  Address
+                  Street Address
                 </label>
                 <input
                   type="text"
-                  value={formData.address}
+                  value={formData.street}
                   onChange={(e) => {
-                    setFormData({ ...formData, address: e.target.value });
-                    if (errors.address) setErrors({ ...errors, address: '' });
+                    setFormData({ ...formData, street: e.target.value });
+                    if (errors.street) setErrors({ ...errors, street: '' });
                   }}
-                  placeholder="123 Main St, New York, NY, USA, 100001"
+                  placeholder="123 Main Street"
                   style={inputStyle}
                   className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
                 />
-                {errors.address && <p style={errorStyle} className="mt-2 text-sm">{errors.address}</p>}
+                {errors.street && <p style={errorStyle} className="mt-2 text-sm">{errors.street}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle} className="block text-sm font-semibold mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => {
+                      setFormData({ ...formData, city: e.target.value });
+                      if (errors.city) setErrors({ ...errors, city: '' });
+                    }}
+                    placeholder="New York"
+                    style={inputStyle}
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
+                  />
+                  {errors.city && <p style={errorStyle} className="mt-2 text-sm">{errors.city}</p>}
+                </div>
+                <div>
+                  <label style={labelStyle} className="block text-sm font-semibold mb-2">
+                    State/Province
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.state}
+                    onChange={(e) => {
+                      setFormData({ ...formData, state: e.target.value });
+                      if (errors.state) setErrors({ ...errors, state: '' });
+                    }}
+                    placeholder="NY"
+                    style={inputStyle}
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
+                  />
+                  {errors.state && <p style={errorStyle} className="mt-2 text-sm">{errors.state}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label style={labelStyle} className="block text-sm font-semibold mb-2">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.country}
+                    onChange={(e) => {
+                      setFormData({ ...formData, country: e.target.value });
+                      if (errors.country) setErrors({ ...errors, country: '' });
+                    }}
+                    placeholder="USA"
+                    style={inputStyle}
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
+                  />
+                  {errors.country && <p style={errorStyle} className="mt-2 text-sm">{errors.country}</p>}
+                </div>
+                <div>
+                  <label style={labelStyle} className="block text-sm font-semibold mb-2">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.postal_code}
+                    onChange={(e) => {
+                      setFormData({ ...formData, postal_code: e.target.value });
+                      if (errors.postal_code) setErrors({ ...errors, postal_code: '' });
+                    }}
+                    placeholder="10001"
+                    style={inputStyle}
+                    className="w-full px-4 py-3 rounded-lg border-2 focus:outline-none focus:border-opacity-100 transition-all"
+                  />
+                  {errors.postal_code && <p style={errorStyle} className="mt-2 text-sm">{errors.postal_code}</p>}
+                </div>
               </div>
 
               {/* Password Field */}
