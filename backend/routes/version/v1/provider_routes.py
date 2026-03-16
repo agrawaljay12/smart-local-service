@@ -1,4 +1,4 @@
-from controllers.provider_controller import create_provider,get_all_approved_Provider,get_all_pending_Provider
+from controllers.provider_controller import create_provider,get_all_approved_Provider,get_all_pending_Provider,approved_reject_request_provider
 from fastapi import APIRouter, Depends, UploadFile, File, Form,status
 from core.dependency import get_current_user,get_required_role
 from fastapi.responses import JSONResponse
@@ -53,7 +53,15 @@ async def fetch_all_providers_endpoint():
 # method: GET
 # description : fetch all providers based on status =="pending"
 
-@router.get('/fetch_all/pending',response_description="Fetch all pending providers",dependencies=Depends(get_required_role(['admin'])))
+@router.get('/fetch_all/pending',response_description="Fetch all pending providers",dependencies=[Depends(get_required_role(["admin"]))])
 async def fetch_all_providers_endpoint():
     return await get_all_pending_Provider()
+
+
+# URL: http://127.0.0.1:8000/api/v1/provider/verify/{provider_id}
+# method:PUT
+# description: Approved and Rejected the request of Provider and update the role  
+@router.put('/verify/{provider_id}',response_description="Approved and Rejected Request of Provider",dependencies=[Depends(get_required_role(["admin"]))])
+async def approved_rejected_request_provider_endpoint(provider_id:str,status:str):
+    return await approved_reject_request_provider(provider_id,status)
 

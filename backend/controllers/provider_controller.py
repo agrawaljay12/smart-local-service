@@ -4,13 +4,16 @@ from core import response
 from core import http_status
 from bson import ObjectId
 from datetime import datetime
-from fastapi import UploadFile, File, Form, Depends
+from fastapi import UploadFile, File, Form, Depends,HTTPException
 from utility.file_upload import save_file
 from core.dependency import get_current_user
+from utility.email_service import send_email
+from utility.otphtml import otp_template
 
 # define the provider collection
 provider_collection = db['providers']
 service_category_collection = db['service_category']
+user_collection = db["users"]
 
 
 # create a new provider
@@ -98,5 +101,84 @@ async def get_all_pending_Provider():
     except Exception as e:
         return response.error_response(
             message= str(e), 
+            status=http_status.INTERNAL_SERVER_ERROR
+        )
+    
+# accept the request of provider aproved/reject and update the role
+async def approved_reject_request_provider(provider_id:str,status:str):
+    
+    try:
+
+        # if status is not found then raise http bad request error
+        if status not in ["approved", "rejected"]:
+            raise HTTPException(
+                status_code=http_status.BAD_REQUEST,
+                detail="Invalid status"
+            )
+        
+        # if provider id is not provided then raise error of bad request 
+        if not provider_id:
+            raise HTTPException(
+                status_code= http_status.BAD_REQUEST,
+                detail="provider id is required"
+            )
+        
+        provider = provider_collection.find_one({"_id":ObjectId(provider_id)})
+
+        # if provider id is not found then raise error
+        if not provider:
+              raise HTTPException(
+                status_code= http_status.NOT_FOUND,
+                detail="provider is not found"
+            )
+        
+        # find the user email  
+        user = user_collection.find_one({"_id":ObjectId(provider["user_id"])})
+
+        if not user: 
+            raise HTTPException(
+                status_code=http_status.NOT_FOUND,
+                detail="User not found"
+            )
+        
+        email = user["email"]
+
+        # update provider status
+        provider_collection.update_one(
+            {"_id": ObjectId(provider_id)},
+            {"$set": {"provider_status": status}}
+        )
+
+        # update provider status
+        provider_collection.update_one(
+            {"_id": ObjectId(provider_id)},
+            {"$set": {"provider_status": status}}
+        )
+
+        # if approved → update role
+        if status == "approved":
+
+            user_collection.update_one(
+                {"_id": ObjectId(provider["user_id"])},
+                {"$set": {"role": "provider"}}
+            )
+
+        # send email
+        email_body = otp_template(status)
+
+        send_email(
+            to_email=email,
+            subject="Provider Request Status",
+            body=email_body
+        )
+
+        return response.success_response(
+            message=f"Provider request {status} successfully",
+            status=http_status.OK
+        )
+
+    except Exception as e:
+        return response.error_response(
+            message=str(e),
             status=http_status.INTERNAL_SERVER_ERROR
         )
