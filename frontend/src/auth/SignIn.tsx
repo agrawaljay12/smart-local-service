@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
 import { USER_ENDPOINTS, VALIDATION } from "../config/api";
-import { getAuthHeader } from "../utils/authHelper";
 
 const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -82,12 +81,29 @@ export function SignIn() {
           localStorage.setItem('rememberMe', 'true');
         }
 
+        // redirection based on user role
+        const getRedirectPath = (role: string) => {
+            switch (role) {
+              case "admin":
+                return "/admin";
+              case "provider":
+                return "/provider/dashboard";
+              case "user":
+                return "/category";
+              default:
+                return "/";
+            }
+          };
+        
+        const redirectPath = getRedirectPath(user.role);
+
         // Redirect to home after short delay
-        setTimeout(() => {
-          navigate('/');
-          window.location.reload(); // Reload to trigger Navigation re-check
-        }, 500);
-      }
+       setTimeout(() => {
+            navigate(redirectPath, { replace: true });
+          }, 300);
+        }
+
+
     } catch (error) {
       setServerError(error instanceof Error ? error.message : 'An error occurred');
     } finally {

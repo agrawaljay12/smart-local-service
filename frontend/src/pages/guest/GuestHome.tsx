@@ -1,9 +1,9 @@
 import { useState, useMemo, memo, useEffect } from "react";
 import { FaArrowRight, FaStar, FaSpinner } from "react-icons/fa";
 import { Link, useNavigate } from "react-router-dom";
-import { useTheme } from "../context/ThemeContext";
-import { CATEGORY_ENDPOINTS } from "../config/category";
-import { getAuthHeader } from "../utils/authHelper";
+import { useTheme } from "../../context/ThemeContext";
+import { CATEGORY_ENDPOINTS } from "../../config/category";
+import { getAuthHeader } from "../../utils/authHelper";
 
 // Constants
 const PRIMARY_COLOR = '#0891b2';

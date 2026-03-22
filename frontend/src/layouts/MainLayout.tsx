@@ -1,19 +1,21 @@
 import { Routes, Route } from "react-router-dom";
-import { Home } from "../content/home";
-import CategoryListing from "../pages/user/CategoryListing";
-import ServiceListing from "../pages/user/ServiceListing";
-import ProviderListing from "../pages/user/ProviderListing";
+import {Home} from "../content/home";
+import {CategoryListing} from "../pages/user/CategoryListing";
+import {ServiceListing} from "../pages/user/ServiceListing";
+import {ProviderListing} from "../pages/user/ProviderListing";
 import { AdminAuth } from "../pages/admin/AdminAuth";
 import { AdminLayout } from "./AdminLayout";
 import { ProviderAuth } from "../pages/provider/ProviderAuth";
 import { ProviderDashboard } from "../pages/provider/ProviderDashboard";
 import { ProviderProtectedRoute } from "../pages/provider/ProviderProtectedRoute";
 import { ProviderRegister } from "../pages/provider/ProviderRegister";
+// import {GuestHome} from "../pages/guest/GuestHome"
 
 export const MainLayout = () => {
   return (
     <main className="grow">
       <Routes>
+        {/* <Route path="/" element={<GuestHome />} /> */}
         <Route path="/" element={<Home />} />
         <Route path="/category"  element={<CategoryListing/>} />
         <Route path="/user/services" element={<ServiceListing />} />
