@@ -15,7 +15,7 @@ interface ApiResponse {
   data: Category[] | { id: string };
 }
 
-export function CategoryListing() {
+export function GuestServices() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -155,7 +155,7 @@ export function CategoryListing() {
                   </p>
                 </div>
                 <button
-                  onClick={() => navigate(`/user/providers?service=${encodeURIComponent(category.service_name)}`)}
+                  onClick={() => navigate(`/guest/provider?service=${encodeURIComponent(category.service_name)}`)}
                   className="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg font-semibold transition-all hover:shadow-md active:scale-95"
                   style={{
                     backgroundColor: '#0891b2',
@@ -163,7 +163,7 @@ export function CategoryListing() {
                     fontFamily: 'var(--font-worksans)'
                   }}
                 >
-                  Browse Services
+                 View Provider
                   <FaArrowRight size={16} />
                 </button>
               </div>
@@ -175,4 +175,3 @@ export function CategoryListing() {
   );
 }
 
-export default CategoryListing;

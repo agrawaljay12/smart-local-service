@@ -1,6 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import {Home} from "../content/home";
-import {CategoryListing} from "../pages/user/CategoryListing";
+import {Home} from "../pages/guest/home";
 import {ServiceListing} from "../pages/user/ServiceListing";
 import {ProviderListing} from "../pages/user/ProviderListing";
 import { AdminAuth } from "../pages/admin/AdminAuth";
@@ -9,7 +8,8 @@ import { ProviderAuth } from "../pages/provider/ProviderAuth";
 import { ProviderDashboard } from "../pages/provider/ProviderDashboard";
 import { ProviderProtectedRoute } from "../pages/provider/ProviderProtectedRoute";
 import { ProviderRegister } from "../pages/provider/ProviderRegister";
-import {GuestHome} from "../pages/guest/GuestHome"
+import { GuestServices } from "../pages/guest/Services";
+import { GuestProviderListing } from "../pages/guest/Provider";
 
 export const MainLayout = () => {
   return (
@@ -17,12 +17,12 @@ export const MainLayout = () => {
       <Routes>
 
         {/* guest routes */}
-        <Route path="/" element={<GuestHome />} />
+        <Route path="/" element={<Home/>} />
+        <Route path="/guest/services" element={<GuestServices/>} />
+        <Route path="/guest/provider" element={<GuestProviderListing/>} />
 
 
         {/* user routes */}
-        <Route path="/user/home" element={<Home />} />
-        <Route path="/user/category"  element={<CategoryListing/>} />
         <Route path="/user/services" element={<ServiceListing />} />
         <Route path="/user/providers" element={<ProviderListing />} />
       

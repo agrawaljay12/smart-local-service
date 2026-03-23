@@ -84,7 +84,7 @@ const WhyChooseItem = memo(({ item, theme }: { item: { title: string; text: stri
   );
 });
 
-export function GuestHome() {
+export function Home() {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
@@ -172,7 +172,7 @@ export function GuestHome() {
 
   const handleServiceClick = (serviceName: string) => {
     // Navigate to category listing with service as query param
-    navigate(`/user/services?category=${encodeURIComponent(serviceName)}`);
+    navigate(`/guest/services?category=${encodeURIComponent(serviceName)}`);
   };
 
  
@@ -250,7 +250,7 @@ export function GuestHome() {
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8 animate-fade-in-delay-2">
             <a
-              href="/category"
+              href="/guest/services"
               style={{ fontFamily: 'var(--font-outfit)', backgroundColor: PRIMARY_COLOR, color: LIGHT_BG }}
               className="px-12 py-4 font-bold text-lg rounded-lg hover:opacity-85 transition-all duration-300 inline-flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2"
               role="button"
@@ -306,7 +306,7 @@ export function GuestHome() {
 
           <div className="text-center mt-16">
             <Link
-              to="/user/services"
+              to="/guest/services"
               style={{ fontFamily: 'var(--font-outfit)', color: PRIMARY_COLOR, borderColor: PRIMARY_COLOR, borderWidth: '2px' }}
               className="inline-block px-8 py-3 font-bold rounded-lg hover:bg-opacity-10 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2"
             >

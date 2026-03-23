@@ -32,7 +32,7 @@ interface Provider {
 
 const PRIMARY_COLOR = '#0891b2';
 
-export function ProviderListing() {
+export function GuestProviderListing() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -429,4 +429,4 @@ export function ProviderListing() {
   );
 }
 
-export default ProviderListing;
+

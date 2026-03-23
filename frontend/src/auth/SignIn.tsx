@@ -89,7 +89,7 @@ export function SignIn() {
               case "provider":
                 return "/provider/dashboard";
               case "user":
-                return "/user/service";
+                return "/user/services";
               default:
                 return "/";
             }
