@@ -84,7 +84,7 @@ const WhyChooseItem = memo(({ item, theme }: { item: { title: string; text: stri
   );
 });
 
-export function Home() {
+export function GuestHome() {
   const { theme } = useTheme();
   const navigate = useNavigate();
 

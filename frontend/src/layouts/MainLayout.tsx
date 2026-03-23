@@ -9,15 +9,20 @@ import { ProviderAuth } from "../pages/provider/ProviderAuth";
 import { ProviderDashboard } from "../pages/provider/ProviderDashboard";
 import { ProviderProtectedRoute } from "../pages/provider/ProviderProtectedRoute";
 import { ProviderRegister } from "../pages/provider/ProviderRegister";
-// import {GuestHome} from "../pages/guest/GuestHome"
+import {GuestHome} from "../pages/guest/GuestHome"
 
 export const MainLayout = () => {
   return (
     <main className="grow">
       <Routes>
-        {/* <Route path="/" element={<GuestHome />} /> */}
-        <Route path="/" element={<Home />} />
-        <Route path="/category"  element={<CategoryListing/>} />
+
+        {/* guest routes */}
+        <Route path="/" element={<GuestHome />} />
+
+
+        {/* user routes */}
+        <Route path="/user/home" element={<Home />} />
+        <Route path="/user/category"  element={<CategoryListing/>} />
         <Route path="/user/services" element={<ServiceListing />} />
         <Route path="/user/providers" element={<ProviderListing />} />
       
