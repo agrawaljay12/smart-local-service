@@ -10,6 +10,10 @@ import { ProviderProtectedRoute } from "../pages/provider/ProviderProtectedRoute
 import { ProviderRegister } from "../pages/provider/ProviderRegister";
 import { GuestServices } from "../pages/guest/Services";
 import { GuestProviderListing } from "../pages/guest/Provider";
+import { GuestContact} from "../pages/guest/Contact";
+import { GuestAbout } from "../pages/guest/About";
+import { UserContact } from "../pages/user/Contact";
+import { UserAbout } from "../pages/user/About";
 
 export const MainLayout = () => {
   return (
@@ -20,11 +24,15 @@ export const MainLayout = () => {
         <Route path="/" element={<Home/>} />
         <Route path="/guest/services" element={<GuestServices/>} />
         <Route path="/guest/provider" element={<GuestProviderListing/>} />
+        <Route path="/guest/contact" element={<GuestContact/>} />
+        <Route path="/guest/about" element={<GuestAbout/>} />
 
 
         {/* user routes */}
         <Route path="/user/services" element={<ServiceListing />} />
         <Route path="/user/providers" element={<ProviderListing />} />
+        <Route path="/user/contact" element={<UserContact/>} />
+        <Route path="/user/about" element={<UserAbout/>} />
       
         {/* Admin Routes */}
         <Route path="/admin/auth" element={<AdminAuth />} />
