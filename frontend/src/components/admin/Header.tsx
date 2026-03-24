@@ -4,7 +4,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useNavigate, Link } from "react-router-dom";
 import { getCurrentUser, clearAuthData } from "../../utils/authHelper";
 
-export function ProviderHeader() {
+export function AdminHeader() {
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 

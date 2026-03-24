@@ -4,13 +4,12 @@ import {
   FaUserPlus,
   FaClipboardList,
   FaHistory,
-  FaCheckCircle
 } from "react-icons/fa";
 import { useTheme } from "../../context/ThemeContext";
 
 const PRIMARY_COLOR = "#0891b2";
 
-export function ProviderSidebar() {
+export function AdminSidebar() {
   const { theme } = useTheme();
   const location = useLocation();
 
@@ -21,22 +20,22 @@ export function ProviderSidebar() {
       icon: FaTachometerAlt
     },
     {
-      name: "Register Service",
-      path: "/provider/register-service",
+      name: "Manage Service",
+      path: "/admin/manage-service",
       icon: FaUserPlus
     },
     {
-      name: "Booking Requests",
-      path: "/provider/requests",
+      name: "Manage User",
+      path: "/admin/manage-user",
       icon: FaClipboardList
     },
     {
-      name: "Manage Bookings",
+      name: "Manage provider",
       path: "/provider/manage-bookings",
-      icon: FaCheckCircle
+      icon:  FaClipboardList
     },
     {
-      name: "Booking History",
+      name: "Manage Provider Request",
       path: "/provider/history",
       icon: FaHistory
     }

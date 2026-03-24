@@ -17,7 +17,7 @@ interface ApiResponse {
 
 const PRIMARY_COLOR = '#0891b2';
 
-export function ProviderDashboard() {
+export function ManageService() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const [services, setServices] = useState<Service[]>([]);
@@ -435,4 +435,4 @@ export function ProviderDashboard() {
   );
 }
 
-export default ProviderDashboard;
+

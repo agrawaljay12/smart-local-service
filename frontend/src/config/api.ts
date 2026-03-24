@@ -229,7 +229,8 @@ export const USER_ENDPOINTS = {
   forgotPassword: `${API_BASE_URL}/users/forgot-password`,
   fetch_user_by_id: `${API_BASE_URL}/users/fetch/{user_id}`,
   change_password: `${API_BASE_URL}/users/change_password/{user_id}`,
-  edit_user: `${API_BASE_URL}/users/edit/{user_id}`
+  edit_user: `${API_BASE_URL}/users/edit/{user_id}`,
+  delete_user_by_id:`${API_BASE_URL}/users/delete/{user_id}`
 
   /*
 

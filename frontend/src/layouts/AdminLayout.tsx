@@ -1,24 +1,24 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, Routes, Route, Navigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import AdminSidebar, { AdminMobileHeader } from "../pages/admin/AdminSidebar";
+import { AdminSidebar } from "../components/admin/Sidebar";
 import { AdminDashboard } from "../pages/admin/AdminDashboard";
+import { AdminHeader } from "../components/admin/Header";
+import { ManageService } from "../pages/admin/ManageService";
+import { ManageUsers } from "../pages/admin/ManageUser";
 
 export const AdminLayout = () => {
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [adminUser, setAdminUser] = useState<any>(null);
   const [isAuthed, setIsAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    const userData = localStorage.getItem('user');
+    const token = localStorage.getItem("access_token");
+    const userData = localStorage.getItem("user");
 
     if (!token || !userData) {
-      navigate('/admin/auth');
+      navigate("/admin/auth");
       setIsAuthed(false);
       return;
     }
@@ -27,50 +27,46 @@ export const AdminLayout = () => {
 
     // ✅ Role check
     if (parsedUser.role !== "admin") {
-      navigate('/');
+      navigate("/");
       setIsAuthed(false);
       return;
     }
 
-    setAdminUser(parsedUser);
     setIsAuthed(true);
   }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('user');
-    navigate('/admin/auth');
-  };
 
   if (isAuthed === null) return null;
   if (!isAuthed) return null;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+  <div
+    className="min-h-screen flex"
+    style={{
+      backgroundColor: theme === "dark" ? "#000" : "#f9fafb"
+    }}
+  >
+    {/* Sidebar */}
+    <AdminSidebar />
 
-      <div className="hidden md:block">
-        <AdminSidebar
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onLogout={handleLogout}
-          adminUser={adminUser}
-        />
+    {/* Right Side (Header + Content) */}
+    <div className="flex-1 ml-64 flex flex-col min-h-screen">
+
+      {/* Header */}
+      <div className="sticky top-0 z-40">
+        <AdminHeader />
       </div>
 
-      <div className="flex-1 flex flex-col">
-        <AdminMobileHeader
-          onMenuToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-          theme={theme}
-          adminUser={adminUser}
-        />
+      {/* Main Content */}
+      <main className="flex-1 p-6 overflow-y-auto">
+        <Routes>
+          <Route index element={<Navigate to="dashboard" />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="manage-service" element={<ManageService />} />
+          <Route path="manage-user" element={<ManageUsers />} />
+        </Routes>
+      </main>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <Routes>
-            <Route index element={<Navigate to="dashboard" />} />
-            <Route path="dashboard" element={<AdminDashboard activeTab={activeTab} />} />
-          </Routes>
-        </main>
-      </div>
     </div>
-  );
+  </div>
+);
 };

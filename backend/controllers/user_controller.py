@@ -155,22 +155,31 @@ async def login_user(request:Request):
      except HTTPException as e:
         raise e
           
-# get all users function
-async def get_all_users() -> list[dict]:
+# get all provider user 
+async def get_all_users():
     try:
-        users = []
-        for user in user_collection.find({}):
-            users.append({
-                "_id": str(user["_id"]),
-                "name": user["name"],
-                "email": user["email"],
-                "role": user.get("role", "user")
-            })
-        return users
+        users= []
+        
+        result = user_collection.find({"role":"user"})
+        
+        for user in result:
+            
+            user["id"] = str(user["_id"])
+            
+            del user["_id"]
+            
+            users.append(user)
+
+        return response.success_response(
+            message = "User retrieved successfully",
+            data = users,
+            status = http_status.OK 
+        )
+    
     except Exception as e:
-        raise HTTPException(
-            status_code=http_status.INTERNAL_SERVER_ERROR,
-            detail=str(e)
+        return response.error_response(
+            message= str(e), 
+            status=http_status.INTERNAL_SERVER_ERROR
         )
     
 
@@ -245,6 +254,8 @@ async def get_all_provider():
             message= str(e), 
             status=http_status.INTERNAL_SERVER_ERROR
         )
+
+
 #  get user by id 
 async def fetch_user_by_id(user_id:str):
     try:

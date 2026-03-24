@@ -246,15 +246,7 @@ export function AdminDashboard({ activeTab = 'dashboard' }: AdminDashboardProps)
       case 'dashboard':
         return (
           <div className="space-y-8">
-            {/* Welcome Section */}
-            <div className="mb-8">
-              <h2 style={{ fontFamily: 'var(--font-outfit)', fontSize: '28px', fontWeight: 'bold' }} className="mb-2">
-                Welcome back to Admin Panel! 👋
-              </h2>
-              <p style={{ fontFamily: 'var(--font-worksans)', opacity: 0.6 }}>
-                Here's what's happening with your platform today.
-              </p>
-            </div>
+            
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

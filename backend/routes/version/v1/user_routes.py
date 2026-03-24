@@ -51,7 +51,8 @@ async def handle_login_user(request:Request):
 
 # URL: http://127.0.0.1:8000/api/v1/users/fetch/all
 # method : GET
-# description : get all users
+# description : Fetch all Users 
+
 @router.get("/fetch/all",response_description="Get all users",dependencies=[Depends(get_required_role(["admin"]))])
 async def get_all_users_route():
     return await get_all_users()
@@ -59,7 +60,8 @@ async def get_all_users_route():
 
 # URL: http://127.0.0.1:8000/api/v1/users/fetch/all/provider
 # method : GET
-# description : get all users
+# description : Fetch all Provider
+
 @router.get("/fetch/all/provider",response_description="Get all providers")
 async def get_all_provider_route():
     return await get_all_provider()
