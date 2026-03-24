@@ -6,6 +6,10 @@ import { AdminDashboard } from "../pages/admin/AdminDashboard";
 import { AdminHeader } from "../components/admin/Header";
 import { ManageService } from "../pages/admin/ManageService";
 import { ManageUsers } from "../pages/admin/ManageUser";
+import { ManageProvider } from "../pages/admin/ManageProvider";
+import { AdminViewProfile } from "../pages/admin/ViewProfile";
+import { AdminEditProfile } from "../pages/admin/EditProfile";
+import { AdminChangePassword } from "../pages/admin/ChangePassword";
 
 export const AdminLayout = () => {
   const { theme } = useTheme();
@@ -63,6 +67,10 @@ export const AdminLayout = () => {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="manage-service" element={<ManageService />} />
           <Route path="manage-user" element={<ManageUsers />} />
+          <Route path="manage-provider" element={<ManageProvider/>} />
+          <Route path="view-profile" element={<AdminViewProfile/>} />
+          <Route path="edit-profile" element={<AdminEditProfile/>} />
+          <Route path="change-password" element={<AdminChangePassword/>} />
         </Routes>
       </main>
 

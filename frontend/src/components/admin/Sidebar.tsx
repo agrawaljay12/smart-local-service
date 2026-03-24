@@ -16,7 +16,7 @@ export function AdminSidebar() {
   const menuItems = [
     {
       name: "Dashboard",
-      path: "/provider/dashboard",
+      path: "/admin/dashboard",
       icon: FaTachometerAlt
     },
     {
@@ -31,7 +31,7 @@ export function AdminSidebar() {
     },
     {
       name: "Manage provider",
-      path: "/provider/manage-bookings",
+      path: "/admin/manage-provider",
       icon:  FaClipboardList
     },
     {

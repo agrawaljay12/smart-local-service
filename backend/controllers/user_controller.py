@@ -238,7 +238,7 @@ async def get_all_provider():
         
         for user in result:
             
-            user["id"] = user["_id"]
+            user["id"] = str(user["_id"])
             
             del user["_id"]
             

@@ -62,7 +62,7 @@ async def get_all_users_route():
 # method : GET
 # description : Fetch all Provider
 
-@router.get("/fetch/all/provider",response_description="Get all providers")
+@router.get("/fetch/all/provider",response_description="Get all providers",dependencies=[Depends(get_required_role(["admin"]))])
 async def get_all_provider_route():
     return await get_all_provider()
 

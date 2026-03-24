@@ -107,21 +107,21 @@ export function AdminHeader() {
 
               {/* Menu Items */}
               <Link
-                to="/provider/profile"
+                to="/admin/view-profile"
                 className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
               >
                 View Profile
               </Link>
 
               <Link
-                to="/provider/edit-profile"
+                to="/admin/edit-profile"
                 className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
               >
                 Edit Profile
               </Link>
 
               <Link
-                to="/provider/change-password"
+                to="/admin/change-password"
                 className="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
               >
                 Change Password
