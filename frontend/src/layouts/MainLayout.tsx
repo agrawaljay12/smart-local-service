@@ -43,20 +43,16 @@ export const MainLayout = () => {
         <Route path="/user/change-password" element={<ChangePassword/>} />
         <Route path="/user/view-profile" element={<ViewProfile/>} />
         <Route path="/user/edit-profile" element={<EditProfile/>} />
+        <Route path="/provider/register" element={<ProviderRegister />} />
       
         {/* Admin Routes */}
         <Route path="/admin/auth" element={<AdminAuth />} />
         <Route path="/admin/*" element={<AdminLayout />} />
 
-        {/* Provider Routes */}
-        {/* <Route path="/provider/auth" element={<ProviderAuth />} /> */}
        
-
-        <Route path="/provider/register" element={<ProviderRegister />} />
-        
+      {/* privider routes */}
       <Route path="/provider" element={<ProviderProtectedRoute />}>
-        <Route element={<ProviderLayout />}>
-
+        <Route element={<ProviderLayout />}>    
           <Route path="dashboard" element={<ProviderDashboard />} />
           <Route path="change-password" element={<ProviderChangePassword />} />
           <Route path="edit-profile" element={<ProviderEditProfile />} />

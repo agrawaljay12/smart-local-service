@@ -10,14 +10,24 @@ export function ManageUsers() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // FETCH USERS (ADMIN ONLY)
+  // ✅ Pagination + Sorting State
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  // ✅ FETCH USERS
   const fetchUsers = async () => {
     try {
-      const res = await fetch(USER_ENDPOINTS.fetchAll, {
-        method: "GET",  
+      setLoading(true);
+
+      const url = `${USER_ENDPOINTS.fetchAll}?page=${page}&limit=${limit}&sort_by=name&sort_order=${sortOrder}`;
+
+      const res = await fetch(url, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaderForFormData() // TOKEN HERE
+          ...getAuthHeaderForFormData()
         }
       });
 
@@ -27,7 +37,10 @@ export function ManageUsers() {
         throw new Error(data.message || "Unauthorized or failed");
       }
 
-      setUsers(data.data || []);
+      // ✅ Updated response structure
+      setUsers(data.data.users || data.data.providers || data.data || []);
+      setTotalPages(data.data.pagination?.total_pages || 1);
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -49,7 +62,7 @@ export function ManageUsers() {
       const res = await fetch(url, {
         method: "DELETE",
         headers: {
-          ...getAuthHeaderForFormData() // ✅ TOKEN HERE
+          ...getAuthHeaderForFormData()
         }
       });
 
@@ -59,7 +72,7 @@ export function ManageUsers() {
         throw new Error(data.message || "Delete failed");
       }
 
-      // ✅ Remove from UI instantly
+      // ✅ Remove instantly
       setUsers((prev) => prev.filter((u) => u.id !== userId));
 
     } catch (err: any) {
@@ -69,23 +82,34 @@ export function ManageUsers() {
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [page, sortOrder]);
 
   return (
     <div className="p-6">
 
-      {/* Title */}
-      <h1 className="text-2xl font-bold mb-6">
-        Manage Users
-      </h1>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h1 className="text-2xl font-bold">Manage Users</h1>
+
+        {/* Sorting */}
+        <select
+          value={sortOrder}
+          onChange={(e) => {
+            setPage(1);
+            setSortOrder(e.target.value);
+          }}
+          className="px-3 py-2 border rounded-lg"
+        >
+          <option value="asc">Sort: A → Z</option>
+          <option value="desc">Sort: Z → A</option>
+        </select>
+      </div>
 
       {/* Loading */}
       {loading && <p>Loading users...</p>}
 
       {/* Error */}
-      {error && (
-        <div className="text-red-500 mb-4">{error}</div>
-      )}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -117,12 +141,8 @@ export function ManageUsers() {
 
             {/* Info */}
             <div className="text-sm space-y-2">
-              <p>
-                <strong>Phone:</strong> {user.phone_no || "N/A"}
-              </p>
-              <p>
-                <strong>Address:</strong> {user.address || "N/A"}
-              </p>
+              <p><strong>Phone:</strong> {user.phone_no || "N/A"}</p>
+              <p><strong>Address:</strong> {user.address || "N/A"}</p>
             </div>
 
             {/* Delete Button */}
@@ -137,12 +157,38 @@ export function ManageUsers() {
 
       </div>
 
+      {/* ✅ Pagination Controls */}
+      <div className="flex justify-center items-center mt-8 gap-4">
+
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((prev) => prev - 1)}
+          className="px-4 py-2 rounded-lg border disabled:opacity-50"
+        >
+          Prev
+        </button>
+
+        <span className="font-medium">
+          Page {page} of {totalPages}
+        </span>
+
+        <button
+          disabled={page === totalPages}
+          onClick={() => setPage((prev) => prev + 1)}
+          className="px-4 py-2 rounded-lg border disabled:opacity-50"
+        >
+          Next
+        </button>
+
+      </div>
+
       {/* Empty */}
       {!loading && users.length === 0 && (
         <p className="text-center text-gray-400 mt-10">
           No users found
         </p>
       )}
+
     </div>
   );
 }

@@ -11,6 +11,7 @@ from core import response
 from core import validation
 from datetime import datetime
 from bson import ObjectId
+from pymongo import ASCENDING, DESCENDING
 
 # define user collections
 user_collection = db["users"]
@@ -156,29 +157,66 @@ async def login_user(request:Request):
         raise e
           
 # get all provider user 
-async def get_all_users():
+async def get_all_users(request: Request):
     try:
-        users= []
+        params = request.query_params
+
+        # pass the query params for pagination
+        page = max(int(params.get("page", 1)), 1)
+        limit = max(int(params.get("limit", 10)), 1)
+        skip = (page - 1) * limit
+
+        # for sorting 
+        sort_order = params.get("sort_order", "asc").lower()
+        sort_by = params.get("sort_by", "name")
+
         
-        result = user_collection.find({"role":"user"})
-        
+        if sort_by:
+            sort_by = "name"
+
+        sort_direction = ASCENDING if sort_order == "asc" else DESCENDING
+
+        query_filter = {"role": "user"}
+
+        total_records = user_collection.count_documents(query_filter)
+
+        result = (
+            user_collection
+            .find(query_filter)
+            .sort(sort_by, sort_direction)
+            .skip(skip)
+            .limit(limit)
+        )
+
+        providers = []
+
         for user in result:
-            
+
             user["id"] = str(user["_id"])
-            
+
             del user["_id"]
+
+            providers.append(user)
             
-            users.append(user)
+        total_pages = (total_records + limit - 1) // limit
 
         return response.success_response(
-            message = "User retrieved successfully",
-            data = users,
-            status = http_status.OK 
+            message="Providers retrieved successfully",
+            data={
+                "providers": providers,
+                "pagination": {
+                    "current_page": page,
+                    "limit": limit,
+                    "total_records": total_records,
+                    "total_pages": total_pages
+                }
+            },
+            status=http_status.OK
         )
-    
+
     except Exception as e:
         return response.error_response(
-            message= str(e), 
+            message=str(e),
             status=http_status.INTERNAL_SERVER_ERROR
         )
     
@@ -229,29 +267,66 @@ async def forgot_password(request:Request):
     except HTTPException as e:
         raise e
     
-# get all provider user 
-async def get_all_provider():
+async def get_all_provider(request: Request):
     try:
-        users= []
+        params = request.query_params
+
+        # pass the query params for pagination
+        page = max(int(params.get("page", 1)), 1)
+        limit = max(int(params.get("limit", 10)), 1)
+        skip = (page - 1) * limit
+
+        # for sorting 
+        sort_order = params.get("sort_order", "asc").lower()
+        sort_by = params.get("sort_by", "name")
+
         
-        result = user_collection.find({"role":"provider"})
-        
+        if sort_by:
+            sort_by = "name"
+
+        sort_direction = ASCENDING if sort_order == "asc" else DESCENDING
+
+        query_filter = {"role": "provider"}
+
+        total_records = user_collection.count_documents(query_filter)
+
+        result = (
+            user_collection
+            .find(query_filter)
+            .sort(sort_by, sort_direction)
+            .skip(skip)
+            .limit(limit)
+        )
+
+        providers = []
+
         for user in result:
-            
+
             user["id"] = str(user["_id"])
-            
+
             del user["_id"]
-            
-            users.append(user)
+
+            providers.append(user)
+
+        total_pages = (total_records + limit - 1) // limit
 
         return response.success_response(
-            message = "Providers retrieved successfully",
-            data = users,
-            status = http_status.OK 
+            message="Providers retrieved successfully",
+            data={
+                "providers": providers,
+                "pagination": {
+                    "current_page": page,
+                    "limit": limit,
+                    "total_records": total_records,
+                    "total_pages": total_pages
+                }
+            },
+            status=http_status.OK
         )
+
     except Exception as e:
         return response.error_response(
-            message= str(e), 
+            message=str(e),
             status=http_status.INTERNAL_SERVER_ERROR
         )
 

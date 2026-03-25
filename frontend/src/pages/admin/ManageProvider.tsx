@@ -6,18 +6,28 @@ import { getAuthHeaderForFormData } from "../../utils/authHelper";
 export function ManageProvider() {
   const { theme } = useTheme();
 
-  const [users, setUsers] = useState<any[]>([]);
+  const [providers, setProviders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // FETCH USERS (ADMIN ONLY)
-  const fetchUsers = async () => {
+  // ✅ Pagination + Sorting
+  const [page, setPage] = useState(1);
+  const [limit] = useState(6);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortOrder, setSortOrder] = useState("asc");
+
+  // ✅ FETCH PROVIDERS
+  const fetchProviders = async () => {
     try {
-      const res = await fetch(USER_ENDPOINTS.fetch_all_provider, {
-        method: "GET",  
+      setLoading(true);
+
+      const url = `${USER_ENDPOINTS.fetch_all_provider}?page=${page}&limit=${limit}&sort_by=name&sort_order=${sortOrder}`;
+
+      const res = await fetch(url, {
+        method: "GET",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaderForFormData() // TOKEN HERE
+          ...getAuthHeaderForFormData()
         }
       });
 
@@ -27,7 +37,10 @@ export function ManageProvider() {
         throw new Error(data.message || "Unauthorized or failed");
       }
 
-      setUsers(data.data || []);
+      // ✅ Based on backend response
+      setProviders(data.data.providers || []);
+      setTotalPages(data.data.pagination?.total_pages || 1);
+
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -35,21 +48,18 @@ export function ManageProvider() {
     }
   };
 
-  // DELETE USER
+  // ✅ DELETE PROVIDER
   const handleDelete = async (userId: string) => {
-    const confirmDelete = window.confirm("Delete this user?");
+    const confirmDelete = window.confirm("Delete this provider?");
     if (!confirmDelete) return;
 
     try {
-      const url = USER_ENDPOINTS.delete_user_by_id.replace(
-        "{user_id}",
-        userId
-      );
+      const url = USER_ENDPOINTS.delete_user_by_id.replace("{user_id}", userId);
 
       const res = await fetch(url, {
         method: "DELETE",
         headers: {
-          ...getAuthHeaderForFormData() // ✅ TOKEN HERE
+          ...getAuthHeaderForFormData()
         }
       });
 
@@ -59,8 +69,8 @@ export function ManageProvider() {
         throw new Error(data.message || "Delete failed");
       }
 
-      // ✅ Remove from UI instantly
-      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      // ✅ Remove instantly
+      setProviders((prev) => prev.filter((u) => u.id !== userId));
 
     } catch (err: any) {
       alert(err.message);
@@ -68,31 +78,44 @@ export function ManageProvider() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchProviders();
+  }, [page, sortOrder]);
 
   return (
     <div className="p-6">
 
-      {/* Title */}
-      <h1 className="text-2xl font-bold mb-6">
-        Manage Users
-      </h1>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        <h1 className="text-2xl font-bold">
+          Manage Providers
+        </h1>
+
+        {/* Sorting */}
+        <select
+          value={sortOrder}
+          onChange={(e) => {
+            setPage(1);
+            setSortOrder(e.target.value);
+          }}
+          className="px-3 py-2 border rounded-lg"
+        >
+          <option value="asc">Sort: A → Z</option>
+          <option value="desc">Sort: Z → A</option>
+        </select>
+      </div>
 
       {/* Loading */}
-      {loading && <p>Loading users...</p>}
+      {loading && <p>Loading providers...</p>}
 
       {/* Error */}
-      {error && (
-        <div className="text-red-500 mb-4">{error}</div>
-      )}
+      {error && <div className="text-red-500 mb-4">{error}</div>}
 
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-        {users.map((user) => (
+        {providers.map((provider) => (
           <div
-            key={user.id}
+            key={provider.id}
             className="p-5 rounded-xl shadow border hover:shadow-lg transition flex flex-col justify-between h-full"
             style={{
               backgroundColor: theme === "dark" ? "#0a0a0a" : "#fff",
@@ -101,48 +124,70 @@ export function ManageProvider() {
           >
             {/* Avatar */}
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
-                {user.name?.charAt(0)?.toUpperCase() || "U"}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 flex items-center justify-center text-white font-bold">
+                {provider.name?.charAt(0)?.toUpperCase() || "P"}
               </div>
 
               <div>
                 <h2 className="font-semibold text-lg">
-                  {user.name || "No Name"}
+                  {provider.name || "No Name"}
                 </h2>
                 <p className="text-sm text-gray-400">
-                  {user.email}
+                  {provider.email}
                 </p>
               </div>
             </div>
 
             {/* Info */}
             <div className="text-sm space-y-2">
-              <p>
-                <strong>Phone:</strong> {user.phone_no || "N/A"}
-              </p>
-              <p>
-                <strong>Address:</strong> {user.address || "N/A"}
-              </p>
+              <p><strong>Phone:</strong> {provider.phone_no || "N/A"}</p>
+              <p><strong>Address:</strong> {provider.address || "N/A"}</p>
             </div>
 
             {/* Delete Button */}
             <button
-              onClick={() => handleDelete(user.id)}
+              onClick={() => handleDelete(provider.id)}
               className="mt-5 w-full py-2 rounded-lg bg-red-500 text-white font-semibold hover:bg-red-600 transition"
             >
-              Delete User
+              Delete Provider
             </button>
           </div>
         ))}
 
       </div>
 
+      {/* ✅ Pagination */}
+      <div className="flex justify-center items-center mt-8 gap-4">
+
+        <button
+          disabled={page === 1}
+          onClick={() => setPage((prev) => prev - 1)}
+          className="px-4 py-2 rounded-lg border disabled:opacity-50"
+        >
+          Prev
+        </button>
+
+        <span className="font-medium">
+          Page {page} of {totalPages}
+        </span>
+
+        <button
+          disabled={page === totalPages}
+          onClick={() => setPage((prev) => prev + 1)}
+          className="px-4 py-2 rounded-lg border disabled:opacity-50"
+        >
+          Next
+        </button>
+
+      </div>
+
       {/* Empty */}
-      {!loading && users.length === 0 && (
+      {!loading && providers.length === 0 && (
         <p className="text-center text-gray-400 mt-10">
-          No users found
+          No providers found
         </p>
       )}
+
     </div>
   );
 }
