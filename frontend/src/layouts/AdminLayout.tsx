@@ -10,6 +10,7 @@ import { ManageProvider } from "../pages/admin/ManageProvider";
 import { AdminViewProfile } from "../pages/admin/ViewProfile";
 import { AdminEditProfile } from "../pages/admin/EditProfile";
 import { AdminChangePassword } from "../pages/admin/ChangePassword";
+import { ProviderRequest } from "../pages/admin/ProviderRequest";
 
 export const AdminLayout = () => {
   const { theme } = useTheme();
@@ -22,7 +23,7 @@ export const AdminLayout = () => {
     const userData = localStorage.getItem("user");
 
     if (!token || !userData) {
-      navigate("/auth/signin", { replace: true });
+      navigate("/auth/signin", { replace: true }); // ✅ FIXED
       setIsAuthed(false);
       return;
     }
@@ -30,9 +31,8 @@ export const AdminLayout = () => {
     try {
       const parsedUser = JSON.parse(userData);
 
-      // ✅ Role check
       if (parsedUser.role !== "admin") {
-        navigate("/signin/auth", { replace: true }); // ✅ FIXED
+        navigate("/", { replace: true }); 
         setIsAuthed(false);
         return;
       }
@@ -43,6 +43,23 @@ export const AdminLayout = () => {
       setIsAuthed(false);
     }
   }, [navigate]);
+
+  useEffect(() => {
+    
+    // Push current state
+    window.history.pushState(null, "", window.location.href);
+
+    const handlePopState = () => {
+      // Prevent going back
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   if (isAuthed === null) return null;
 
@@ -70,7 +87,7 @@ export const AdminLayout = () => {
         {/* Content */}
         <main className="flex-1 p-6 overflow-y-auto">
           <Routes>
-            <Route index element={<Navigate to="dashboard" replace />} /> {/* ✅ FIXED */}
+            <Route index element={<Navigate to="dashboard" replace />} /> 
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="manage-service" element={<ManageService />} />
             <Route path="manage-user" element={<ManageUsers />} />
@@ -78,6 +95,7 @@ export const AdminLayout = () => {
             <Route path="view-profile" element={<AdminViewProfile />} />
             <Route path="edit-profile" element={<AdminEditProfile />} />
             <Route path="change-password" element={<AdminChangePassword />} />
+            <Route path="request" element={<ProviderRequest/>} />
           </Routes>
         </main>
 

@@ -7,3 +7,14 @@ def otp_template(otp):
         </body>
     </html>
     """
+
+# send the dynamic message to user 
+def message_template(message,username:str,):
+    return f"""
+    <html>
+        <body>
+           <p>Hello ,{username if username else "User"} {message}</p></br>
+           <p>Regards Smart Local Service Platflorm</p>
+        </body>
+    </html>
+    """

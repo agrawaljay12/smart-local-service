@@ -11,8 +11,19 @@ interface AdminProtectedRouteProps {
  */
 export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
   const adminToken = localStorage.getItem('access_token');
+  const user = localStorage.getItem("user");
 
-  if (!adminToken) {
+  if (!adminToken || !user) {
+    return <Navigate to="/auth/signin" replace />;
+  }
+
+  try {
+     const prasejson = JSON.parse(user);
+     if (prasejson.role !=="admin") {
+        return <Navigate to="/" replace />;
+     }
+  }
+  catch{
     return <Navigate to="/auth/signin" replace />;
   }
 

@@ -36,7 +36,7 @@ export function AdminSidebar() {
     },
     {
       name: "Manage Provider Request",
-      path: "/provider/history",
+      path: "/admin/request",
       icon: FaHistory
     }
   ];

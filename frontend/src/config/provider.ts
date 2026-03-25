@@ -92,7 +92,11 @@ export const PROVIDER_ENDPOINTS = {
    * 
    * Note: Only returns providers with status "approved"
    */
-  fetchAll: `${API_BASE_URL}/provider/fetch_all/approved`
+  fetchAll: `${API_BASE_URL}/provider/fetch_all/approved`,
+
+  fetch_all_pending_Provider:`${API_BASE_URL}/provider/fetch_all/pending`,
+
+  verify_request:`${API_BASE_URL}/provider/verify/{provider_id}`
 };
 
 /**

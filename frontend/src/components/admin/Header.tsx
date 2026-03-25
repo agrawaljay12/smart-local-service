@@ -19,19 +19,6 @@ export function AdminHeader() {
     user?.email ||
     "Provider";
 
-  useEffect(() => {
-      window.history.pushState(null, "", window.location.href);
-
-      const handlePopState = () => {
-        window.history.pushState(null, "", window.location.href);
-      };
-
-      window.addEventListener("popstate", handlePopState);
-
-      return () => {
-        window.removeEventListener("popstate", handlePopState);
-      };
-    }, []);
 
   // ✅ Handle hover open
   const handleMouseEnter = () => {
@@ -65,7 +52,7 @@ export function AdminHeader() {
   // logout
 const handleLogout = () => {
   localStorage.clear();
-  window.location.replace("/"); 
+  window.location.replace("/auth/signin"); 
 };
 
   return (

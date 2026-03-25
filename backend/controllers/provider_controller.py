@@ -8,7 +8,7 @@ from fastapi import UploadFile, File, Form, Depends,HTTPException,Request
 from utility.file_upload import save_file
 from core.dependency import get_current_user
 from utility.email_service import send_email
-from utility.otphtml import otp_template
+from utility.otphtml import message_template
 from pymongo import ASCENDING, DESCENDING
 
 # define the provider collection
@@ -258,12 +258,6 @@ async def approved_reject_request_provider(provider_id:str,status:str):
             {"$set": {"provider_status": status}}
         )
 
-        # update provider status
-        provider_collection.update_one(
-            {"_id": ObjectId(provider_id)},
-            {"$set": {"provider_status": status}}
-        )
-
         # if approved → update role
         if status == "approved":
 
@@ -273,8 +267,7 @@ async def approved_reject_request_provider(provider_id:str,status:str):
             )
 
         # send email
-        email_body = otp_template(status)
-
+        email_body = message_template(username= user["name"], message=f"Your Request is {status} by service local platform team")
         send_email(
             to_email=email,
             subject="Provider Request Status",
@@ -283,7 +276,8 @@ async def approved_reject_request_provider(provider_id:str,status:str):
 
         return response.success_response(
             message=f"Provider request {status} successfully",
-            status=http_status.OK
+            status=http_status.OK,
+            data = str(provider["_id"])
         )
 
     except Exception as e:
