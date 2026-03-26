@@ -22,6 +22,7 @@ import { ProviderEditProfile } from "../pages/provider/EditProfile";
 import { ProviderViewProfile } from "../pages/provider/ViewProfile";
 import { ProviderLayout } from "./ProviderLayout";
 import { UserProtectedRoute } from "../pages/user/UserProtetedRoute";
+import { PaymentTest } from "../PaymentIntegration/PaymentIntegration";
 
 export const MainLayout = () => {
   return (
@@ -34,6 +35,7 @@ export const MainLayout = () => {
         <Route path="/guest/provider" element={<GuestProviderListing/>} />
         <Route path="/guest/contact" element={<GuestContact/>} />
         <Route path="/guest/about" element={<GuestAbout/>} />
+        <Route path="/payment/test" element={<PaymentTest/>} />
 
 
         {/* user routes */}
