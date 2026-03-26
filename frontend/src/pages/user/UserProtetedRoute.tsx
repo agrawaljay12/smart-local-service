@@ -1,10 +1,24 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useEffect } from "react";
 
-export function ProviderProtectedRoute() {
+export function UserProtectedRoute() {
   const token = localStorage.getItem("access_token");
   const user = localStorage.getItem("user");
 
   let parsedUser = null;
+
+  useEffect(() => {
+    const handleBack = () => {
+      window.history.pushState(null, "", window.location.href);
+    };
+
+    window.history.pushState(null, "", window.location.href);
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, []);
 
   try {
     parsedUser = user ? JSON.parse(user) : null;

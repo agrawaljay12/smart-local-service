@@ -21,6 +21,7 @@ import { ProviderChangePassword } from "../pages/provider/Changepassword";
 import { ProviderEditProfile } from "../pages/provider/EditProfile";
 import { ProviderViewProfile } from "../pages/provider/ViewProfile";
 import { ProviderLayout } from "./ProviderLayout";
+import { UserProtectedRoute } from "../pages/user/UserProtetedRoute";
 
 export const MainLayout = () => {
   return (
@@ -36,30 +37,31 @@ export const MainLayout = () => {
 
 
         {/* user routes */}
-        <Route path="/user/services" element={<ServiceListing />} />
-        <Route path="/user/providers" element={<ProviderListing />} />
-        <Route path="/user/contact" element={<UserContact/>} />
-        <Route path="/user/about" element={<UserAbout/>} />
-        <Route path="/user/change-password" element={<ChangePassword/>} />
-        <Route path="/user/view-profile" element={<ViewProfile/>} />
-        <Route path="/user/edit-profile" element={<EditProfile/>} />
-        <Route path="/provider/register" element={<ProviderRegister />} />
+        <Route path="/user" element={<UserProtectedRoute/>}>
+            <Route path="/user/services" element={<ServiceListing />} />
+            <Route path="/user/providers" element={<ProviderListing />} />
+            <Route path="/user/contact" element={<UserContact/>} />
+            <Route path="/user/about" element={<UserAbout/>} />
+            <Route path="/user/change-password" element={<ChangePassword/>} />
+            <Route path="/user/view-profile" element={<ViewProfile/>} />
+            <Route path="/user/edit-profile" element={<EditProfile/>} />
+        </Route>       
       
         {/* Admin Routes */}
         <Route path="/admin/auth" element={<AdminAuth />} />
         <Route path="/admin/*" element={<AdminLayout />} />
 
-       
-      {/* privider routes */}
-      <Route path="/provider" element={<ProviderProtectedRoute />}>
-        <Route element={<ProviderLayout />}>    
-          <Route path="dashboard" element={<ProviderDashboard />} />
-          <Route path="change-password" element={<ProviderChangePassword />} />
-          <Route path="edit-profile" element={<ProviderEditProfile />} />
-          <Route path="view-profile" element={<ProviderViewProfile />} />
-
+        <Route path="/provider/register" element={<ProviderRegister />} />
+      
+        {/* privider routes */}
+        <Route path="/provider" element={<ProviderProtectedRoute />}>
+          <Route element={<ProviderLayout />}>    
+            <Route path="dashboard" element={<ProviderDashboard />} />
+            <Route path="change-password" element={<ProviderChangePassword />} />
+            <Route path="edit-profile" element={<ProviderEditProfile />} />
+            <Route path="view-profile" element={<ProviderViewProfile />} />
+          </Route>
         </Route>
-      </Route>
       </Routes>
     </main>
   );

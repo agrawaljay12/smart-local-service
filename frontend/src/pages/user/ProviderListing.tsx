@@ -23,7 +23,7 @@ export function ProviderListing() {
   const [sortOrder, setSortOrder] = useState("asc");
 
   const [page, setPage] = useState(1);
-  const limit = 10;
+  const limit = 12;
   const [total, setTotal] = useState(0);
 
   const [loading, setLoading] = useState(false);

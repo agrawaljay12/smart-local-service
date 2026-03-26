@@ -85,7 +85,7 @@ async def get_all_approved_Provider(request: Request):
         sort_by = data.get("sort_by") or params.get("sort_by") or "price"
 
         page = max(int(data.get("page") or params.get("page") or 1), 1)
-        limit = max(int(data.get("limit") or params.get("limit") or 10), 1)
+        limit = max(int(data.get("limit") or params.get("limit") or 12), 1)
         skip = (page - 1) * limit
 
         # -------- Filtering -------- #
