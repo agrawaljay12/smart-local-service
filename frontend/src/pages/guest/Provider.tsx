@@ -1,114 +1,82 @@
 import { useState, useEffect } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
-import { FaTimes, FaPhone, FaMapMarkerAlt, FaArrowLeft, FaEnvelope} from "react-icons/fa";
-import { useTheme } from "../../context/ThemeContext";
+import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar } from "react-icons/fa";
 import { PROVIDER_ENDPOINTS } from "../../config/provider";
-
-interface ApiProvider {
-  _id: string;
-  location: string;
-  experience?: string;
-  price: string;
-  description: string;
-  rating?: number;
-  name?: string;
-  email?: string;
-  phone_no?: string;
-}
 
 interface Provider {
   _id: string;
   name: string;
+  email: string;
+  phone: string;
   price: number;
   location: string;
-  phone: string;
-  email: string;
   experience: number;
   bio: string;
-  rating?: number;
+  rating: number;
 }
 
-const PRIMARY_COLOR = '#0891b2';
-
 export function GuestProviderListing() {
-  const { theme } = useTheme();
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-
   const [providers, setProviders] = useState<Provider[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const [sortField, setSortField] = useState<'price' | 'experience' | 'rating'>('price');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState("price");
+  const [sortOrder, setSortOrder] = useState("asc");
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const limit = 10;
   const [total, setTotal] = useState(0);
 
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null);
-  const [showDetail, setShowDetail] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [serverError, setServerError] = useState('');
-
-  const serviceName = searchParams.get('service') || 'Service';
+  const [loading, setLoading] = useState(false);
 
   // ✅ Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
+      setDebouncedSearch(search);
       setPage(1);
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, [search]);
 
-  // ✅ Fetch from backend
+  // ✅ Fetch providers
   useEffect(() => {
     const fetchProviders = async () => {
       setLoading(true);
-      setServerError('');
-
       try {
         const query = new URLSearchParams({
           page: String(page),
           limit: String(limit),
           sort_by: sortField,
           sort_order: sortOrder,
-          location: debouncedSearch,
-          description: debouncedSearch
         });
 
-        const response = await fetch(`${PROVIDER_ENDPOINTS.fetchAll}?${query}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data?.message || 'Failed to fetch providers');
+        //  Only add search if value exists
+        if (debouncedSearch.trim()) {
+          query.append("location", debouncedSearch);
+          query.append("description", debouncedSearch);
         }
 
-        const list: ApiProvider[] = data?.data?.providers || [];
+        const res = await fetch(`${PROVIDER_ENDPOINTS.fetchAll}?${query}`);
+        const data = await res.json();
 
-        const mapped: Provider[] = list.map((provider) => ({
-          _id: provider._id,
-          name: provider.name || "Unknown Provider",
-          email: provider.email || "N/A",
-          phone: provider.phone_no || "N/A",
-          price: Number(provider.price ?? 0),
-          experience: Number(provider.experience ?? 0),
-          location: provider.location || "N/A",
-          bio: provider.description || "",
-          rating: Number(provider.rating ?? 0)
+        const list = data?.data?.providers || [];
+
+        const mapped = list.map((p: any) => ({
+          _id: p._id,
+          name: p.name || "Unknown",
+          email: p.email || "N/A",
+          phone: p.phone_no || "N/A",
+          price: Number(p.price || 0),
+          location: p.location,
+          experience: Number(p.experience || 0),
+          bio: p.description,
+          rating: Number(p.rating || 0)
         }));
 
         setProviders(mapped);
         setTotal(data?.data?.total || 0);
-
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Connection error';
-
-        setServerError(errorMessage);
-        setProviders([]);
+      } catch (err) {
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -117,151 +85,134 @@ export function GuestProviderListing() {
     fetchProviders();
   }, [page, sortField, sortOrder, debouncedSearch]);
 
-  const handleProviderClick = (provider: Provider) => {
-    setSelectedProvider(provider);
-    setShowDetail(true);
-  };
-
-  const handleCloseDetail = () => {
-    setShowDetail(false);
-    setSelectedProvider(null);
-  };
-
-  const handleContactProvider = (provider: Provider) => {
-    alert(`Contacting ${provider.name}\nPhone: ${provider.phone}`);
-  };
-
   const totalPages = Math.ceil(total / limit);
 
-  // Theme styles (UNCHANGED)
-  const containerBg = {
-    backgroundColor: theme === 'dark' ? '#000000' : '#ffffff',
-    color: theme === 'dark' ? '#ffffff' : '#000000'
-  };
-
-  const headerStyle = {
-    backgroundColor: theme === 'dark' ? '#111111' : '#f9fafb',
-    color: theme === 'dark' ? '#ffffff' : '#000000',
-    borderBottom: `1px solid ${theme === 'dark' ? '#333333' : '#e5e7eb'}`
-  };
-
-  const cardStyle = {
-    backgroundColor: theme === 'dark' ? '#111111' : '#f9fafb',
-    borderColor: theme === 'dark' ? '#333333' : '#e5e7eb'
-  };
-
-  const inputStyle = {
-    backgroundColor: theme === 'dark' ? '#1f2937' : '#f5f5f5',
-    color: theme === 'dark' ? '#ffffff' : '#000000',
-    borderColor: theme === 'dark' ? '#444444' : '#d1d5db'
-  };
-
-  const modalBg = {
-    backgroundColor: theme === 'dark' ? '#111111' : '#ffffff',
-    color: theme === 'dark' ? '#ffffff' : '#000000'
-  };
-
   return (
-    <div style={containerBg} className="page-container">
-      {/* HEADER SAME */}
-      <div style={headerStyle} className="page-header sticky top-0 z-40">
-        <div className="px-6 py-6 max-w-7xl mx-auto">
-          <div className="flex items-center gap-4 mb-2">
-            <button onClick={() => navigate(-1)} className="text-2xl">
-              <FaArrowLeft />
-            </button>
-            <div>
-              <h1 className="text-3xl font-bold">{serviceName} Providers</h1>
-              <p className="text-sm mt-1">Browse and connect with verified professionals</p>
-            </div>
-          </div>
-        </div>
+    <div className="max-w-7xl mx-auto px-6 py-8">
+
+      {/* 🔥 Header */}
+      <h1 className="text-3xl font-bold mb-6">Service Providers</h1>
+
+      {/* 🔍 Filters */}
+      <div className="grid md:grid-cols-3 gap-4 mb-6">
+        <input
+          type="text"
+          placeholder="Search by location or description..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+        />
+
+        <select
+          value={sortField}
+          onChange={(e) => {
+            setSortField(e.target.value);
+            setPage(1);
+          }}
+          className="px-4 py-3 border rounded-lg"
+        >
+          <option value="price">Price</option>
+          <option value="experience">Experience</option>
+          <option value="rating">Rating</option>
+        </select>
+
+        <select
+          value={sortOrder}
+          onChange={(e) => {
+            setSortOrder(e.target.value);
+            setPage(1);
+          }}
+          className="px-4 py-3 border rounded-lg"
+        >
+          <option value="asc">Low → High</option>
+          <option value="desc">High → Low</option>
+        </select>
       </div>
 
-      <div className="px-6 py-8 max-w-5xl mx-auto w-full">
+      {/* 📊 Count */}
+      <p className="text-gray-500 mb-4">
+        {loading ? "Loading..." : `Total Providers: ${total}`}
+      </p>
 
-        {/* FILTER UI SAME */}
-        <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <input
-            type="text"
-            placeholder="Search providers by name or location..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={inputStyle}
-            className="px-4 py-3 rounded-lg border"
-          />
+      {/* 🧑‍🔧 GRID (3 columns) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-          <select
-            value={sortField}
-            onChange={(e) => {
-              setSortField(e.target.value as any);
-              setPage(1);
-            }}
-            style={inputStyle}
-            className="px-4 py-3 rounded-lg border"
+        {providers.map((p) => (
+          <div
+            key={p._id}
+            className="border rounded-xl p-5 shadow-sm hover:shadow-md transition duration-200 bg-white"
           >
-            <option value="price">Price</option>
-            <option value="experience">Experience</option>
-            <option value="rating">Rating</option>
-          </select>
+            {/* Name */}
+            <h2 className="text-xl font-semibold mb-2">{p.name}</h2>
 
-          <select
-            value={sortOrder}
-            onChange={(e) => {
-              setSortOrder(e.target.value as any);
-              setPage(1);
-            }}
-            style={inputStyle}
-            className="px-4 py-3 rounded-lg border"
-          >
-            <option value="asc">Low → High</option>
-            <option value="desc">High → Low</option>
-          </select>
-        </div>
+            {/* Description */}
+            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+              {p.bio}
+            </p>
 
-        {/* COUNT */}
-        <p style={{ opacity: 0.7, marginBottom: '1.5rem' }}>
-          {loading ? 'Loading providers...' : `Showing ${providers.length} providers`}
-        </p>
-
-        {/* LIST */}
-        <div className="space-y-4">
-          {providers.map((provider) => (
-            <div
-              key={provider._id}
-              style={cardStyle}
-              className="p-6 rounded-lg border-2 cursor-pointer flex justify-between"
-              onClick={() => handleProviderClick(provider)}
-            >
-              <div>
-                <h3 className="text-xl font-bold">{provider.name}</h3>
-                <p>{provider.location}</p>
-                <p>{provider.bio}</p>
-              </div>
-
-              <div>
-                <p>${provider.price}/hr</p>
-                <p>{provider.experience}+ yrs</p>
-              </div>
+            {/* Location + Rating */}
+            <div className="flex justify-between text-sm text-gray-500 mb-2">
+              <span className="flex items-center gap-1">
+                <FaMapMarkerAlt /> {p.location}
+              </span>
+              <span className="flex items-center gap-1 text-yellow-500">
+                <FaStar /> {p.rating || 0}
+              </span>
             </div>
-          ))}
-        </div>
 
-        {/* ✅ PAGINATION */}
-        <div className="flex justify-between items-center mt-6">
-          <button disabled={page === 1} onClick={() => setPage(p => p - 1)}>
-            Previous
+            {/* Price + Experience */}
+            <div className="flex justify-between font-medium mb-3">
+              <span className="text-cyan-600">₹{p.price}</span>
+              <span>{p.experience} yrs</span>
+            </div>
+
+            {/* Contact */}
+            <div className="text-sm text-gray-600 space-y-1">
+              <p className="flex items-center gap-2">
+                <FaPhone /> {p.phone}
+              </p>
+              <p className="flex items-center gap-2">
+                <FaEnvelope /> {p.email}
+              </p>
+            </div>
+          </div>
+        ))}
+
+      </div>
+
+      {/* 📄 Pagination */}
+      <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
+
+        <button
+          disabled={page === 1}
+          onClick={() => setPage(p => p - 1)}
+          className="px-3 py-1 border rounded disabled:opacity-40"
+        >
+          Prev
+        </button>
+
+        {[...Array(totalPages)].map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setPage(i + 1)}
+            className={`px-3 py-1 border rounded ${
+              page === i + 1
+                ? "bg-cyan-600 text-white"
+                : "hover:bg-gray-100"
+            }`}
+          >
+            {i + 1}
           </button>
+        ))}
 
-          <span>Page {page} of {totalPages || 1}</span>
-
-          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-            Next
-          </button>
-        </div>
+        <button
+          disabled={page === totalPages}
+          onClick={() => setPage(p => p + 1)}
+          className="px-3 py-1 border rounded disabled:opacity-40"
+        >
+          Next
+        </button>
       </div>
     </div>
   );
 }
-
-export default GuestProviderListing;

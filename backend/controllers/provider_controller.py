@@ -91,11 +91,12 @@ async def get_all_approved_Provider(request: Request):
         # -------- Filtering -------- #
         query_filter = {"provider_status": "approved"}
 
-        if location:
-            query_filter["location"] = {"$regex": location, "$options": "i"}
-
-        if description:
-            query_filter["description"] = {"$regex": description, "$options": "i"}
+        if location or description:
+            search_value = location or description
+            query_filter["$or"] = [
+                {"location": {"$regex": search_value, "$options": "i"}},
+                {"description": {"$regex": search_value, "$options": "i"}}
+            ]
 
         # -------- Sorting -------- #
         allowed_sort_fields = ["price", "rating", "experience"]
