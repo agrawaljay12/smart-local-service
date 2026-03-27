@@ -2,8 +2,15 @@ import { useState, useEffect } from "react";
 import { FaMapMarkerAlt, FaPhone, FaEnvelope, FaStar } from "react-icons/fa";
 import { PROVIDER_ENDPOINTS } from "../../config/provider";
 
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 interface Provider {
   _id: string;
+  service_id: string; // ✅ IMPORTANT
   name: string;
   email: string;
   phone: string;
@@ -27,8 +34,9 @@ export function ProviderListing() {
   const [total, setTotal] = useState(0);
 
   const [loading, setLoading] = useState(false);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
-  // ✅ Debounce search
+  // ✅ Debounce Search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -38,7 +46,7 @@ export function ProviderListing() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ✅ Fetch providers
+  // ✅ Fetch Providers
   useEffect(() => {
     const fetchProviders = async () => {
       setLoading(true);
@@ -50,7 +58,6 @@ export function ProviderListing() {
           sort_order: sortOrder,
         });
 
-        //  Only add search if value exists
         if (debouncedSearch.trim()) {
           query.append("location", debouncedSearch);
           query.append("description", debouncedSearch);
@@ -63,6 +70,7 @@ export function ProviderListing() {
 
         const mapped = list.map((p: any) => ({
           _id: p._id,
+          service_id: p.service_id, 
           name: p.name || "Unknown",
           email: p.email || "N/A",
           phone: p.phone_no || "N/A",
@@ -70,7 +78,7 @@ export function ProviderListing() {
           location: p.location,
           experience: Number(p.experience || 0),
           bio: p.description,
-          rating: Number(p.rating || 0)
+          rating: Number(p.rating || 0),
         }));
 
         setProviders(mapped);
@@ -87,20 +95,106 @@ export function ProviderListing() {
 
   const totalPages = Math.ceil(total / limit);
 
+  // ✅ PAYMENT + BOOKING FUNCTION
+  const handleBooking = async (provider: Provider) => {
+    try {
+      setPayingId(provider._id);
+
+      const token = localStorage.getItem("access_token");
+
+      // 1️⃣ Create Booking (ONLY service_id)
+      const res = await fetch("http://127.0.0.1:8000/api/v1/booking/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          service_id: provider.service_id, // ✅ ONLY THIS
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!data?.data?.order_id) {
+        alert("Order creation failed");
+        return;
+      }
+
+      const { order_id, amount } = data.data;
+
+      const API_KEY = import.meta.env.VITE_RAZORPAY_API_KEY;
+
+      // 2️⃣ Razorpay Options
+      const options = {
+        key: API_KEY,
+        amount: amount,
+        currency: "INR",
+        order_id: order_id,
+
+        name: provider.name,
+        description: "Service Booking",
+
+        handler: async function (response: any) {
+          // 3️⃣ Verify Payment
+          const verifyRes = await fetch(
+            "http://127.0.0.1:8000/api/v1/booking/verify",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                ...response,
+                service_id: provider.service_id, // ✅ store service
+              }),
+            }
+          );
+
+          const verifyData = await verifyRes.json();
+
+          if (verifyData.status === "success") {
+            alert("✅ Booking Confirmed");
+          } else {
+            alert("❌ Payment Failed");
+          }
+        },
+
+        prefill: {
+          name: "User",
+          email: "user@email.com",
+          contact: "9999999999",
+        },
+
+        theme: {
+          color: "#0891b2",
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong");
+    } finally {
+      setPayingId(null);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
 
-      {/* 🔥 Header */}
       <h1 className="text-3xl font-bold mb-6">Service Providers</h1>
 
       {/* 🔍 Filters */}
       <div className="grid md:grid-cols-3 gap-4 mb-6">
         <input
           type="text"
-          placeholder="Search by location or description..."
+          placeholder="Search..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-3 border rounded-lg focus:ring-2 focus:ring-cyan-500 outline-none"
+          className="px-4 py-3 border rounded-lg"
         />
 
         <select
@@ -129,44 +223,34 @@ export function ProviderListing() {
         </select>
       </div>
 
-      {/* 📊 Count */}
       <p className="text-gray-500 mb-4">
         {loading ? "Loading..." : `Total Providers: ${total}`}
       </p>
 
-      {/* 🧑‍🔧 GRID (3 columns) */}
+      {/* 🧑‍🔧 GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
         {providers.map((p) => (
-          <div
-            key={p._id}
-            className="border rounded-xl p-5 shadow-sm hover:shadow-md transition duration-200 bg-white"
-          >
-            {/* Name */}
+          <div key={p._id} className="border rounded-xl p-5 shadow-sm bg-white">
+
             <h2 className="text-xl font-semibold mb-2">{p.name}</h2>
 
-            {/* Description */}
-            <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-              {p.bio}
-            </p>
+            <p className="text-gray-600 text-sm mb-3">{p.bio}</p>
 
-            {/* Location + Rating */}
             <div className="flex justify-between text-sm text-gray-500 mb-2">
               <span className="flex items-center gap-1">
                 <FaMapMarkerAlt /> {p.location}
               </span>
               <span className="flex items-center gap-1 text-yellow-500">
-                <FaStar /> {p.rating || 0}
+                <FaStar /> {p.rating}
               </span>
             </div>
 
-            {/* Price + Experience */}
             <div className="flex justify-between font-medium mb-3">
               <span className="text-cyan-600">₹{p.price}</span>
               <span>{p.experience} yrs</span>
             </div>
 
-            {/* Contact */}
             <div className="text-sm text-gray-600 space-y-1">
               <p className="flex items-center gap-2">
                 <FaPhone /> {p.phone}
@@ -175,18 +259,26 @@ export function ProviderListing() {
                 <FaEnvelope /> {p.email}
               </p>
             </div>
+
+            {/* 🔥 BOOK BUTTON */}
+            <button
+              onClick={() => handleBooking(p)}
+              disabled={payingId === p._id}
+              className="mt-4 w-full bg-cyan-600 text-white py-2 rounded-lg hover:bg-cyan-700 disabled:opacity-50"
+            >
+              {payingId === p._id ? "Processing..." : "Book Service"}
+            </button>
           </div>
         ))}
 
       </div>
 
       {/* 📄 Pagination */}
-      <div className="flex justify-center items-center gap-2 mt-8 flex-wrap">
-
+      <div className="flex justify-center gap-2 mt-8 flex-wrap">
         <button
           disabled={page === 1}
           onClick={() => setPage(p => p - 1)}
-          className="px-3 py-1 border rounded disabled:opacity-40"
+          className="px-3 py-1 border rounded"
         >
           Prev
         </button>
@@ -196,9 +288,7 @@ export function ProviderListing() {
             key={i}
             onClick={() => setPage(i + 1)}
             className={`px-3 py-1 border rounded ${
-              page === i + 1
-                ? "bg-cyan-600 text-white"
-                : "hover:bg-gray-100"
+              page === i + 1 ? "bg-cyan-600 text-white" : ""
             }`}
           >
             {i + 1}
@@ -208,7 +298,7 @@ export function ProviderListing() {
         <button
           disabled={page === totalPages}
           onClick={() => setPage(p => p + 1)}
-          className="px-3 py-1 border rounded disabled:opacity-40"
+          className="px-3 py-1 border rounded"
         >
           Next
         </button>

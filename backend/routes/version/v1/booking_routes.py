@@ -1,28 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request,Depends
 from core import http_status
 from core import response 
-import razorpay
-import hmac
-import hashlib
-import os
-from dotenv import load_dotenv
+from core.dependency import get_current_user
+from controllers.booking_controller import create_booking,verify_payment
 
-load_dotenv()
 
 router = APIRouter()
-
-# load the environment variable
-
-SECRET_KEY = os.getenv("RAZORPAY_SECRET_KEY") 
-API_KEY = os.getenv("RAZORPAY_API_KEY")
-
-client = razorpay.Client(auth=(API_KEY,SECRET_KEY))
-
-print(API_KEY)
-print(SECRET_KEY)
-
-
-
 
 # test route
 # URL:http://127.0.0.1:8000/api/v1/booking/
@@ -44,32 +27,14 @@ async def booking_home():
 # METHOD:POST
 # description: create booking 
 @router.post('/create',response_description="Create Booking")
-async def Create_Order():
-   order = client.order.create({
-       "amount":500*100,
-       "currency":"INR",
-       "payment_capture":1
-   })
-   return order
+async def Create_Order(request:Request,current_user: dict = Depends(get_current_user)):
+    return await create_booking(request,current_user)
+
 
 
 # URL:http://127.0.0.1:8000/api/v1/booking/verify
 # METHOD:POST
 # description: create booking 
 @router.post('/verify',response_description="Verify Booking")
-async def Verify_Order(data:dict):
-
-    order_id = data["razorpay_order_id"]
-    payment_id = data["razorpay_payment_id"]
-    signature = data["razorpay_signature"]
-
-    generated_signature = hmac.new(
-        bytes(SECRET_KEY, "utf-8"),
-        bytes(order_id + "|" + payment_id, "utf-8"),
-        hashlib.sha256
-    ).hexdigest()
-
-    if generated_signature == signature:
-        return {"status": "success"}
-    else:
-        return {"status": "failed"}
+async def Verify_Order(request:Request):
+    return await verify_payment(request)

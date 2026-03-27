@@ -1,7 +1,9 @@
 from models.services import Service_Category
 from core import http_status
 from core import response
-from config.db import db
+from config.db import db    
+from bson import ObjectId
+from fastapi import HTTPException
 
 # define the service category collection
 service_category_collection = db['service_category']
@@ -52,4 +54,37 @@ async def get_service_categories():
     
     except Exception as e:
         return response.error_response(str(e), status=http_status.INTERNAL_SERVER_ERROR)
+
+# get service categories by id
+async def get_service_by_id(service_id:str):
+    try:
+
+        if not service_id:
+            raise HTTPException(
+                status_code=http_status.NOT_FOUND,
+                detail="Service is not found"
+            )
+        
+        service = service_category_collection.find_one({"_id":ObjectId(service_id)})
+
+        service["_id"] = str(service["_id"])
+
+        if not service:
+            raise HTTPException(
+                status_code=http_status.NOT_FOUND,
+                detail="Service is not found"
+            )
+        else:
+            return response.success_response(
+                status=http_status.OK,
+                message="Service is retrieved successfully",
+                data= service
+            )
+         
+    except Exception as e:
+        return response.error_response(str(e), status=http_status.INTERNAL_SERVER_ERROR)
+    
+    except Exception as e:
+        return response.error_response(str(e), status=http_status.INTERNAL_SERVER_ERROR)
+        
         

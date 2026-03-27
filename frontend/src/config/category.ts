@@ -66,6 +66,8 @@ export const CATEGORY_ENDPOINTS = {
    */
   fetchAll: `${API_BASE_URL}/services/fetch_all`,
 
+  fetch_by_id: `${API_BASE_URL}/services/fetch/{service_id}`,
+
   /**
    * Update Service Category
    * PUT /services/update/:id
