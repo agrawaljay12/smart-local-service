@@ -4,19 +4,24 @@ from core import response
 import razorpay
 import hmac
 import hashlib
+import os
+from dotenv import load_dotenv
 
-
-
-
+load_dotenv()
 
 router = APIRouter()
 
 # load the environment variable
 
-# SECRET_KEY = os.getenv("RAZORPAY_SECRET_KEY") 
-# API_KEY = os.getenv("RAZORPAY_API_KEY ")
+SECRET_KEY = os.getenv("RAZORPAY_SECRET_KEY") 
+API_KEY = os.getenv("RAZORPAY_API_KEY")
 
-client = razorpay.Client(auth=("api_key","secret_key"))
+client = razorpay.Client(auth=(API_KEY,SECRET_KEY))
+
+print(API_KEY)
+print(SECRET_KEY)
+
+
 
 
 # test route
@@ -59,7 +64,7 @@ async def Verify_Order(data:dict):
     signature = data["razorpay_signature"]
 
     generated_signature = hmac.new(
-        bytes("secret_key", "utf-8"),
+        bytes(SECRET_KEY, "utf-8"),
         bytes(order_id + "|" + payment_id, "utf-8"),
         hashlib.sha256
     ).hexdigest()

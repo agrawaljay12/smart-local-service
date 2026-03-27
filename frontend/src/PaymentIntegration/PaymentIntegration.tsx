@@ -9,6 +9,8 @@ declare global {
 export function PaymentTest() {
   const [loading, setLoading] = useState(false);
 
+  const API_KEY = import.meta.env.VITE_RAZORPAY_API_KEY;
+
   const handlePayment = async () => {
     try {
       setLoading(true);
@@ -28,7 +30,7 @@ export function PaymentTest() {
 
       // 2️⃣ Razorpay Options
       const options = {
-        key: "api_key", // 🔥 Replace with your KEY_ID
+        key: API_KEY, // 🔥 Replace with your KEY_ID
         amount: order.amount,
         currency: order.currency,
         order_id: order.id,
