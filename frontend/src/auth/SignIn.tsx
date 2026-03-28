@@ -4,7 +4,7 @@ import { FaArrowLeft, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useTheme } from "../context/ThemeContext";
 import { USER_ENDPOINTS, VALIDATION } from "../config/api";
 
-const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+const SESSION_TIMEOUT = 120 * 60 * 1000; // 30 minutes
 
 export function SignIn() {
   const { theme } = useTheme();

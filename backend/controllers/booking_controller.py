@@ -1,8 +1,9 @@
-from models.booking import Booking
 from config.db import db
 from core import response, http_status
 from core.dependency import get_current_user
 from fastapi import Request,Depends,HTTPException
+from utility.email_service import send_email
+from utility.otphtml import message_template
 from bson import ObjectId
 from dotenv import load_dotenv
 import os
@@ -130,17 +131,19 @@ async def verify_payment(request:Request):
 
         # load the data from request body
         data = await request.json()
+
+        user_id = data.get("user_id")
         
-        order_id = data.get("razorpay_order_id")
-        payment_id = data.get("razorpay_payment_id")
+        razorpay_order_id = data.get("razorpay_order_id")
+        razorpay_payment_id = data.get("razorpay_payment_id")
         razorpay_signature = data.get("razorpay_signature")
 
-        if not order_id or not payment_id or not razorpay_signature:
+        if not razorpay_order_id or not razorpay_payment_id or not razorpay_signature:
             raise HTTPException(status_code=400, detail="Missing payment data")
 
         generated_signature = hmac.new(
             bytes(SECRET_KEY, "utf-8"),
-            bytes(order_id + "|" + payment_id, "utf-8"),
+            bytes(razorpay_order_id + "|" + razorpay_payment_id, "utf-8"),
             hashlib.sha256
         ).hexdigest()
 
@@ -153,14 +156,24 @@ async def verify_payment(request:Request):
         
         
         booking_data ={
-            "razorpay_payment_id":payment_id,
+            "razorpay_payment_id":razorpay_payment_id,
             "razorpay_signature":razorpay_signature,
             "payment_status":"success",
             "booking_status":"confirmed",
             "payment_date":datetime.utcnow()
         }
 
-        result = booking_collection.update_one({"razorpay_order_id":order_id},{"$set":booking_data})
+        booking = booking_collection.find_one({"razorpay_order_id":razorpay_order_id})
+
+        user = user_collection.find_one({"_id":ObjectId(booking["user_id"])})
+
+        email = user["email"]   
+
+        email_body= message_template(username=user["name"], message=f"is your service confirmed")      
+
+        result = booking_collection.update_one({"razorpay_order_id":razorpay_order_id},{"$set":booking_data})
+
+        send_email(to_email=email,subject="Booking Confirmation",body=email_body)
 
 
         if result.modified_count==1:
@@ -168,8 +181,8 @@ async def verify_payment(request:Request):
                 status=http_status.OK,
                 message=f"Your payment is successful",
                 data={
-                    "order_id": order_id,
-                    "payment_id": payment_id,
+                    "order_id": razorpay_order_id,
+                    "payment_id": razorpay_payment_id,
                     "status": "success"
                 }
             )
