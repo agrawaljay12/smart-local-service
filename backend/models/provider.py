@@ -7,7 +7,6 @@ class Provider(BaseModel):
     location:str
     experience:str
     price:str   
-    rating:Optional[float] = "0"
     description:str
     provider_status:str ="pending"
     created_at:str

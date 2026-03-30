@@ -4,6 +4,7 @@ from routes.version.v1.otp_routes import router as otp_router
 from routes.version.v1.service_routes import router as service_router
 from routes.version.v1.provider_routes import router as provider_router
 from routes.version.v1.booking_routes import router as booking_router
+from routes.version.v1.review_routes import router as review_router
 
 # function to register all routes
 def register_routes(app: FastAPI):
@@ -41,6 +42,13 @@ def register_routes(app: FastAPI):
         booking_router,
         prefix="/api/v1/booking",
         tags=["booking"]
+    )
+
+    # http://127.0.0.1:8000/api/v1/reviews
+    app.include_router(
+        review_router,
+        prefix="/api/v1/reviews",
+        tags=["reviews"]
     )
 
 
