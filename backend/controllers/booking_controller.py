@@ -93,19 +93,19 @@ async def create_booking(request:Request,current_user:dict=Depends(get_current_u
             "receipt":user_id
         })     
 
-        booking_data = {
-            "user_id": user_id,
-            "provider_id":provider_id,
-            "service_id": str(service_id),
-            "price": price,
-            "razorpay_order_id": order["id"],
-            "booking_date":datetime.utcnow().isoformat(),
-            "payment_status": "pending",
-            "booking_status": "pending"
-        }
+        # booking_data = {
+        #     "user_id": user_id,
+        #     "provider_id":provider_id,
+        #     "service_id": str(service_id),
+        #     "price": price,
+        #     "razorpay_order_id": order["id"],
+        #     "booking_date":datetime.utcnow().isoformat(),
+        #     "payment_status": "pending",
+        #     "booking_status": "pending"
+        # }
 
 
-        result = booking_collection.insert_one(booking_data)
+        
 
         return response.created_response(
             status=http_status.CREATED,
@@ -113,7 +113,9 @@ async def create_booking(request:Request,current_user:dict=Depends(get_current_u
             data={
                 "order_id": order["id"],
                 "amount": order["amount"],
-                "booking_id": str(result.inserted_id)
+                "provider_id": provider_id,
+                "service_id": str(service_id),
+                "price": price
             }
         )
     
@@ -128,78 +130,88 @@ async def create_booking(request:Request,current_user:dict=Depends(get_current_u
     
 
 # verify the payment booking 
-async def verify_payment(request:Request,current_user:dict=Depends(get_current_user)):
+# verify payment and CREATE booking
+async def verify_payment(request: Request, current_user: dict = Depends(get_current_user)):
     try:
-
-        # load the data from request body
         data = await request.json()
 
         user_id = str(current_user.get("user_id"))
-        name = current_user.get("name")
-        user_email = current_user.get("email")
 
-        
         razorpay_order_id = data.get("razorpay_order_id")
         razorpay_payment_id = data.get("razorpay_payment_id")
         razorpay_signature = data.get("razorpay_signature")
+        provider_id = data.get("provider_id")  # ✅ IMPORTANT
 
         if not user_id:
-            raise HTTPException(status_code=http_status.UNAUTHORIZED,detail="User is Unauthorized")
+            raise HTTPException(
+                status_code=http_status.UNAUTHORIZED,
+                detail="User is Unauthorized"
+            )
 
-        if not razorpay_order_id or not razorpay_payment_id or not razorpay_signature:
-            raise HTTPException(status_code=400, detail="Missing payment data")
+        if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature, provider_id]):
+            raise HTTPException(
+                status_code=http_status.BAD_REQUEST,
+                detail="Missing payment data"
+            )
 
+        # ✅ Verify Signature
         generated_signature = hmac.new(
             bytes(SECRET_KEY, "utf-8"),
             bytes(razorpay_order_id + "|" + razorpay_payment_id, "utf-8"),
             hashlib.sha256
         ).hexdigest()
 
-
-        if generated_signature !=razorpay_signature:
+        if generated_signature != razorpay_signature:
             raise HTTPException(
                 status_code=http_status.BAD_REQUEST,
                 detail="Invalid Signature"
             )
-        
-        
-        booking_data ={
-            "razorpay_payment_id":razorpay_payment_id,
-            "razorpay_signature":razorpay_signature,
-            "payment_status":"success",
-            "booking_status":"confirmed",
-            "payment_date":datetime.utcnow().isoformat()
-        }
-        
-        # get booking  
-        booking = booking_collection.find_one({"razorpay_order_id":razorpay_order_id})
 
-        if not booking:
-            raise HTTPException(status_code=http_status.NOT_FOUND,detail="booking is not found")
-
-        user = user_collection.find_one({"_id":ObjectId(booking["user_id"])})
-
-        email = user["email"]   
-        name = user["name"]
-
-        # Fetch provider
-        provider = provider_collection.find_one({"_id": ObjectId(booking["provider_id"])})
-
+        # Fetch provider again
+        provider = provider_collection.find_one({"_id": ObjectId(provider_id)})
         if not provider:
             raise HTTPException(status_code=404, detail="Provider not found")
-        
-        provider_user = user_collection.find_one({"_id": ObjectId(provider["user_id"])})
 
+        service_id = provider.get("service_category_id")
+        price = float(provider.get("price", 0))
+
+        # Fetch service
+        service = service_collection.find_one({"_id": ObjectId(service_id)})
+        service_name = service.get("service_name")
+
+        # Fetch user
+        user = user_collection.find_one({"_id": ObjectId(user_id)})
+        user_email = user.get("email")
+        user_name = user.get("name")
+
+        # Fetch provider user
+        provider_user = user_collection.find_one({"_id": ObjectId(provider["user_id"])})
         provider_email = provider_user.get("email")
         provider_name = provider_user.get("name")
 
-         # Fetch service
-        service = service_collection.find_one({"_id": ObjectId(booking["service_id"])})
-        service_name = service.get("service_name")
+        # CREATE BOOKING ONLY HERE
+        booking_data = {
+            "user_id": user_id,
+            "provider_id": provider_id,
+            "service_id": str(service_id),
+            "price": price,
 
-          # Email content
+            "razorpay_order_id": razorpay_order_id,
+            "razorpay_payment_id": razorpay_payment_id,
+            "razorpay_signature": razorpay_signature,
+
+            "payment_status": "success",
+            "booking_status": "confirmed",
+
+            "booking_date": datetime.utcnow().isoformat(),
+            "payment_date": datetime.utcnow().isoformat()
+        }
+
+        result = booking_collection.insert_one(booking_data)
+
+        # Send Emails
         user_email_body = message_template(
-            username=name,
+            username=user_name,
             message=f"Your booking for {service_name} is confirmed."
         )
 
@@ -208,24 +220,22 @@ async def verify_payment(request:Request,current_user:dict=Depends(get_current_u
             message=f"You have a new booking for {service_name}."
         )
 
-        result = booking_collection.update_one({"razorpay_order_id":razorpay_order_id},{"$set":booking_data})
-
-         # Send emails
         send_email(to_email=user_email, subject="Booking Confirmation", body=user_email_body)
         send_email(to_email=provider_email, subject="New Booking Received", body=provider_email_body)
 
+        return response.success_response(
+            status=http_status.OK,
+            message="Payment successful & booking confirmed",
+            data={
+                "booking_id": str(result.inserted_id),
+                "order_id": razorpay_order_id,
+                "payment_id": razorpay_payment_id,
+                "status": "success"
+            }
+        )
 
-        if result.modified_count==1:
-            return response.success_response(
-                status=http_status.OK,
-                message=f"Your payment is successful",
-                data={
-                    "order_id": razorpay_order_id,
-                    "payment_id": razorpay_payment_id,
-                    "status": "success"
-                }
-            )
-
+    except HTTPException:
+        raise
 
     except Exception as e:
         return response.error_response(

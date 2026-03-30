@@ -13,6 +13,7 @@ declare global {
 interface Provider {
   _id: string;
   service_id: string; // ✅ IMPORTANT
+  service_name:string;
   name: string;
   email: string;
   phone: string;
@@ -94,6 +95,7 @@ export function ProviderListing() {
         const mapped = list.map((p: any) => ({
           _id: p._id,
           service_id: p.service_id,
+          service_name: p.service_name || "Unknown Service",
           name: p.name || "Unknown",
           email: p.email || "N/A",
           phone: p.phone_no || "N/A",
@@ -139,9 +141,16 @@ export function ProviderListing() {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        provider_id: provider._id, // ✅ FIXED
+        provider_id: provider._id,
       }),
     });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("API ERROR:", text);
+      alert("Request failed");
+      return;
+    }
 
     const data = await res.json();
 
@@ -171,12 +180,15 @@ export function ProviderListing() {
             const verifyRes = await fetch(
               "http://127.0.0.1:8000/api/v1/booking/verify",
               {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(response),
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                  ...response,
+                  provider_id: provider._id, 
+                }),
               }
             );
 
@@ -191,6 +203,14 @@ export function ProviderListing() {
           } catch (err) {
             setPaymentStatus("error");
           }
+        },
+
+        // ✅ HANDLE USER CLOSE / CANCEL
+        modal: {
+          ondismiss: function () {
+            console.log("❌ User closed payment popup");
+            alert("Payment cancelled");
+          },
         },
 
       prefill: {
@@ -219,10 +239,12 @@ export function ProviderListing() {
 
       <h1 className="text-3xl font-bold mb-6">Service Providers</h1>
 
-      {service_id && (
+      {providers.length > 0 && (
         <h2 className="text-lg text-gray-500 mb-4">
           Showing providers for:{" "}
-          <span className="font-semibold">{service_id}</span>
+          <span className="font-semibold">
+            {providers[0].service_name}
+          </span>
         </h2>
       )}
 
@@ -273,6 +295,8 @@ export function ProviderListing() {
           <div key={p._id} className="border rounded-xl p-5 shadow-sm bg-white">
 
             <h2 className="text-xl font-semibold mb-2">{p.name}</h2>
+
+            <p className="text-sm text-gray-500 mb-2">Service: {p.service_name}</p>
 
             <p className="text-gray-600 text-sm mb-3">{p.bio}</p>
 

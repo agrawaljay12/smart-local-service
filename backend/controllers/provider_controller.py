@@ -131,21 +131,12 @@ async def get_all_approved_Provider(request: Request):
         pipeline = [
             {"$match": match_stage},
 
-            {
-                "$addFields": {
-                    "service_id_clean": {
-                        "$trim": { "input": "$service_id" }
-                    }
-                }
-            },
-
-
-            # ✅ SAFE CONVERSION
+            # ✅ Convert string → ObjectId (CORRECT FIELD)
             {
                 "$addFields": {
                     "service_id_obj": {
                         "$convert": {
-                            "input": "$service_id_clean",
+                            "input": "$service_category_id",  # ✅ FIXED
                             "to": "objectId",
                             "onError": None,
                             "onNull": None
@@ -155,6 +146,7 @@ async def get_all_approved_Provider(request: Request):
             }
         ]
 
+        # ✅ Apply filter
         if service_object_id:
             pipeline.append({
                 "$match": {
@@ -189,7 +181,7 @@ async def get_all_approved_Provider(request: Request):
             },
             {"$unwind": {"path": "$user_details", "preserveNullAndEmptyArrays": True}},
 
-            
+            # service lookup
             {
                 "$lookup": {
                     "from": "service_category",
@@ -208,7 +200,7 @@ async def get_all_approved_Provider(request: Request):
                         {"$limit": limit},
                         {
                             "$project": {
-                                "_id": 1,
+                                "_id": {"$toString": "$_id"},  # ✅ FIX
                                 "description": 1,
                                 "price": 1,
                                 "rating": 1,
@@ -217,9 +209,13 @@ async def get_all_approved_Provider(request: Request):
                                 "name": "$user_details.name",
                                 "email": "$user_details.email",
                                 "phone_no": "$user_details.phone_no",
-                                "service_name": "$service_details.name",
-                                "service_id": 1,
-                                "service_id_obj": 1
+                                "service_name": "$service_details.service_name",
+
+                                # ✅ IMPORTANT FIXES
+                                "service_id": "$service_category_id",  # keep original string
+                                "service_id_obj": {
+                                    "$toString": "$service_id_obj"
+                                }
                             }
                         }
                     ],
@@ -227,7 +223,6 @@ async def get_all_approved_Provider(request: Request):
                 }
             }
         ])
-
         # -------- Execute -------- #
         result = list(provider_collection.aggregate(pipeline))
 
