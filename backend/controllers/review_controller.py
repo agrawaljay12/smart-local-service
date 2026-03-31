@@ -9,128 +9,95 @@ from datetime import datetime
 
 # created the review collection
 review_collection = db["reviews"]
-booking_collection = db["bookings"]
+booking_collection = db["booking"]
 provider_collection = db["providers"]
 
-async def create_review(request: Request, current_user: dict = Depends(get_current_user)):
-    try:
-        data = await request.json()
+async def create_review(request:Request, current_user: dict =Depends(get_current_user)):
+     try: 
 
+        # get the review data from the request body
+        data = await request.json() 
         booking_id = data.get("booking_id")
         provider_id = data.get("provider_id")
-        rating = data.get("rating")
-        comment = data.get("comment")
+        rating = int(data.get("rating"))
+        comment = data.get("comment") 
+        user_id = str(current_user.get("user_id")) 
 
-        user_id = str(current_user.get("user_id"))
-
-        # Auth check
+        # if user is not authenticated, raise an error
         if not user_id:
-            raise HTTPException(status_code=http_status.UNAUTHORIZED, detail="Unauthorized")
+            raise HTTPException(status_code=http_status.UNAUTHORIZED, detail="Unauthorized") 
 
-        # Required fields
-        if not all([booking_id, provider_id]) or rating is None:
-            raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Missing required fields")
-
-        # Type safety
-        try:
-            rating = int(rating)
-        except:
-            raise HTTPException(status_code=400, detail="Rating must be a number")
-
+        # validate the review data 
+        if not booking_id or not provider_id or rating is None or comment is None:
+            raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Missing required fields") 
+        
+        # check if provider exists
+        provider = provider_collection.find_one({"_id": ObjectId(provider_id)})
+        if not provider:
+            raise HTTPException(status_code=http_status.NOT_FOUND, detail="Provider not found")
+        
+        # validate rating
         if rating < 1 or rating > 5:
-            raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
+             raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Invalid rating")
+             
+        # check if booking exists and is completed  
+        booking = booking_collection.find_one({"_id": ObjectId(booking_id), "user_id": user_id, "provider_id": provider_id, "booking_status": "completed"}) 
 
-        # Convert IDs properly
-        booking_obj_id = ObjectId(booking_id)
-        provider_obj_id = ObjectId(provider_id)
-
-        # Validate booking
-        booking = booking_collection.find_one({
-            "_id": booking_obj_id,
-            "user_id": user_id,
-            "provider_id": provider_id,  # keep consistent with DB type
-            "booking_status": "completed"
-        })
-
-        if not booking:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid booking or not completed"
-            )
-
-        # Prevent duplicate review (atomic safer approach later)
-        existing_review = review_collection.find_one({
-            "booking_id": booking_id
-        })
-
-        if existing_review:
-            raise HTTPException(
-                status_code=400,
-                detail="Review already exists"
-            )
-
-        # Save review
-        review_data = {
-            "user_id": user_id,
-            "provider_id": provider_id,
-            "booking_id": booking_id,
-            "rating": rating,
-            "comment": comment,
-            "created_at": datetime.utcnow().isoformat()
-        }
-
-        result = review_collection.insert_one(review_data)
-
-        # EFFICIENT aggregation (NO full fetch)
+        # check if booking is not found or not completed 
+        if not booking:    
+            raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Invalid booking or booking not completed") 
+        
+        # check if review already exists for this booking
+        review = review_collection.find_one({"booking_id": str(booking_id)}) 
+        
+        if review:
+             raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Review already exists for this booking")
+        
+        # create the review data
+        review_data = Review(
+             user_id=user_id, 
+             provider_id=provider_id,
+             booking_id=booking_id, 
+             rating=rating, 
+             comment=comment, 
+             created_at= datetime.utcnow().isoformat() 
+            ) 
+        
+        # insert the review into the database
+        result = review_collection.insert_one(review_data.dict()) 
+        
+        # Recalculate average rating 
         pipeline = [
             {"$match": {"provider_id": provider_id}},
             {
                 "$group": {
-                    "_id": "$provider_id",
+                    "_id": None,
                     "avg_rating": {"$avg": "$rating"},
                     "total_reviews": {"$sum": 1}
                 }
             }
         ]
 
-        agg_result = list(review_collection.aggregate(pipeline))
+        # execute the aggregation pipeline to calculate average rating and total reviews for the provider
+        result = list(review_collection.aggregate(pipeline))
 
-        if agg_result:
-            avg_rating = round(agg_result[0]["avg_rating"], 1)
-            total_reviews = agg_result[0]["total_reviews"]
-        else:
-            avg_rating = rating
-            total_reviews = 1
-
-        # Update provider safely
-        provider = provider_collection.find_one({"_id": provider_obj_id})
-        if not provider:
-            raise HTTPException(status_code=404, detail="Provider not found")
-
-        provider_collection.update_one(
-            {"_id": provider_obj_id},
-            {
-                "$set": {
-                    "avg_rating": avg_rating,
-                    "total_reviews": total_reviews
-                }
-            }
-        )
-
-        return response.success_response(
-            status_code=http_status.CREATED,
-            detail="Review created successfully",
-            data={
-                "review_id": str(result.inserted_id),
-                "avg_rating": avg_rating
-            }
-        )
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        return response.error_response(
-            status_code=http_status.INTERNAL_SERVER_ERROR,
-            detail=str(e)
+        avg_rating = result[0]["avg_rating"] if result else 0
+        total_reviews = result[0]["total_reviews"] if result else 0
+        
+        # Update provider document with the new average rating and total reviews
+        provider_collection.update_one( {"_id": ObjectId(provider_id)}, { "$set": { "avg_rating": round(avg_rating, 1), "total_reviews": total_reviews } } ) 
+        
+        return response.success_response( 
+            status=http_status.CREATED,
+            detail="Review created successfully", 
+            data={"review_id": str(result.inserted_id)} 
+        ) 
+     
+     except HTTPException: 
+         raise 
+     
+     except Exception as e: 
+        return response.error_response( 
+            status=http_status.INTERNAL_SERVER_ERROR, 
+            detail=str(e) 
         )

@@ -27,6 +27,7 @@ booking_collection = db["booking"]
 service_collection = db["service_category"]
 user_collection = db["users"]
 provider_collection = db["providers"]
+review_collection = db["reviews"]
 
 
 # create booking 
@@ -252,6 +253,7 @@ async def fetch_booking(request: Request, current_user: dict = Depends(get_curre
         sort_order = int(params.get("sort_order", 1))
         page = int(params.get("page", 1))
         limit = int(params.get("limit", 12))
+        status_filter = params.get("status", "completed")
 
         user_id = str(current_user.get("user_id"))
 
@@ -261,13 +263,19 @@ async def fetch_booking(request: Request, current_user: dict = Depends(get_curre
         skip = (page - 1) * limit
         sort_direction = 1 if sort_order == 1 else -1
 
+        allowed_sort_fields = ["booking_date", "price", "payment_date"]
+
+        if sort_by not in allowed_sort_fields:
+            sort_by = "booking_date"
+
         # ---------------- BASE PIPELINE ---------------- #
         base_pipeline = [
 
             # ✅ MATCH USER BOOKINGS
             {
                 "$match": {
-                    "user_id": user_id
+                    "user_id": user_id,
+                    "booking_status": status_filter
                 }
             },
 
@@ -310,6 +318,21 @@ async def fetch_booking(request: Request, current_user: dict = Depends(get_curre
                 "$unwind": {
                     "path": "$provider",
                     "preserveNullAndEmptyArrays": True
+                }
+            },
+        
+            # ---------------- REVIEW LOOKUP ---------------- #
+            {
+                "$lookup": {
+                    "from": "reviews",
+                    "localField": "_id",
+                    "foreignField": "booking_id",
+                    "as": "review"
+                }
+            },
+            {
+                "$addFields": {
+                    "has_review": {"$gt": [{"$size": "$review"}, 0]}
                 }
             },
 
@@ -368,9 +391,7 @@ async def fetch_booking(request: Request, current_user: dict = Depends(get_curre
                 "$match": {
                     "$or": [
                         {"provider_user.name": {"$regex": search, "$options": "i"}},
-                        {"service.service_name": {"$regex": search, "$options": "i"}},
-                        {"booking_status": {"$regex": search, "$options": "i"}},
-                        {"payment_status": {"$regex": search, "$options": "i"}}
+                        {"service.service_name": {"$regex": search, "$options": "i"}}
                     ]
                 }
             })
@@ -422,6 +443,9 @@ async def fetch_booking(request: Request, current_user: dict = Depends(get_curre
                 }
             })
         )
+
+    except HTTPException:
+        raise
 
     except Exception as e:
         return response.error_response(

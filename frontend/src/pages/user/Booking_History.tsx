@@ -2,16 +2,19 @@ import { useEffect, useState } from "react";
 import { BOOKING_ENDPOINTS } from "../../config/booking";
 import { getAuthHeader } from "../../utils/authHelper";
 import { FaCalendarAlt, FaUser, FaRupeeSign } from "react-icons/fa";
+import { ReviewModal } from "./Review_Model";
 
-interface Booking {
+export interface Booking {
   booking_id: string;
   provider_name: string;
-  service_name: string; // ✅ ADDED
+  provider_id: string; 
+  service_name: string; 
   price: number;
   booking_status: string;
   payment_status: string;
   booking_date: string;
   payment_date?: string;
+  has_review?: boolean;
 }
 
 export function BookingHistory() {
@@ -27,6 +30,9 @@ export function BookingHistory() {
   const [totalPages, setTotalPages] = useState(1);
 
   const [loading, setLoading] = useState(false);
+
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
 
   // ✅ debounce search
   useEffect(() => {
@@ -48,6 +54,7 @@ export function BookingHistory() {
           limit: String(limit),
           sort_by: sortBy,
           sort_order: String(sortOrder),
+          status: "completed", //  only show completed bookings
         });
 
         if (debouncedSearch.trim()) {
@@ -60,6 +67,12 @@ export function BookingHistory() {
             headers: getAuthHeader(),
           }
         );
+
+        if (!res.ok) {
+            const text = await res.text();
+            console.error("API ERROR:", text);
+            return;
+        }
 
         const data = await res.json();
 
@@ -80,6 +93,11 @@ export function BookingHistory() {
   const formatDate = (date?: string) => {
     if (!date) return "N/A";
     return new Date(date).toLocaleString();
+  };
+
+  const handleReview = (booking: Booking) => {
+    setSelectedBooking(booking);
+    setShowReviewModal(true);
   };
 
   return (
@@ -172,7 +190,7 @@ export function BookingHistory() {
             <div className="flex justify-between mt-3">
               <span
                 className={`text-xs px-2 py-1 rounded ${
-                  b.booking_status === "confirmed"
+                  b.booking_status === "completed"
                     ? "bg-green-100 text-green-600"
                     : "bg-yellow-100 text-yellow-600"
                 }`}
@@ -190,6 +208,17 @@ export function BookingHistory() {
                 {b.payment_status || "N/A"}
               </span>
             </div>
+
+            {/* review button */}
+            {b.booking_status === "completed" && !b.has_review && (
+                <button
+                  onClick={() => handleReview(b)}
+                  className="mt-4 w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700"
+                >
+                  Write Review
+                </button>
+            )}
+
           </div>
         ))}
       </div>
@@ -227,6 +256,22 @@ export function BookingHistory() {
           Next
         </button>
       </div>
+      
+      {/* 📝 Review Modal */}
+      {showReviewModal && selectedBooking && (
+        <ReviewModal
+          booking={selectedBooking}
+          onClose={() => setShowReviewModal(false)}
+          onSuccess={() => {
+            // 🔄 refresh bookings after review
+            setPage(1);
+          }}
+        />
+      )}
+
     </div>
+      
   );
+
+  
 }
