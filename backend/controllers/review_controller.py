@@ -127,24 +127,21 @@ async def get_all_review_by_provider(provider_id:str):
         if not provider:
             raise HTTPException(status_code=http_status.NOT_FOUND, detail="Provider not found")
         
-        user = user_collection.find_one({"role":"user"}) 
-
-        if user:
-            user_id = str(user["_id"])
-            user_name = user.get("name", "Unknown User")
-        else:
-            user_id = None
-            user_name = "Unknown User"
-            raise HTTPException(status_code=http_status.NOT_FOUND, detail="User not found")
-        
         reviews = review_collection.find({"provider_id": provider_id})
 
         review_list = []
 
         for review in reviews:
-            review["_id"] = str(review["_id"])
 
-            review_list.append({
+             user = user_collection.find_one({"_id": ObjectId(review["user_id"])}) 
+
+             user_id = str(user["_id"]) if user else None
+             user_name = user.get("name", "Unknown User") if user else "Unknown User"
+
+             review["_id"] = str(review["_id"])
+
+             review_list.append({
+                "review_id": review["_id"],
                 "user_id": user_id,
                 "user_name": user_name,
                 "provider_id": provider_id,

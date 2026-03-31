@@ -43,6 +43,10 @@ export function ProviderListing() {
   const [searchParams] = useSearchParams();
   const service_id = searchParams.get("service_id"); // 🔥 important
 
+  const [selectedProviderReviews, setSelectedProviderReviews] = useState<any[]>([]);
+  const [showReviews, setShowReviews] = useState(false);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
   // ✅ Debounce Search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -52,6 +56,32 @@ export function ProviderListing() {
 
     return () => clearTimeout(timer);
   }, [search]);
+
+  // get reviews for a provider
+  const fetchReviews = async (providerId: string) => {
+    try {
+      setLoadingReviews(true);
+
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/v1/reviews/fetch/provider/${providerId}`
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data?.detail || "Failed to fetch reviews");
+        return;
+      }
+
+      setSelectedProviderReviews(data?.data || []);
+      setShowReviews(true);
+
+    } catch (err) {
+      console.error("Review fetch error:", err);
+    } finally {
+      setLoadingReviews(false);
+    }
+  };
 
   // ✅ Fetch Providers
   useEffect(() => {
@@ -331,8 +361,54 @@ export function ProviderListing() {
             >
               {payingId === p._id ? "Processing..." : "Book Service"}
             </button>
+
+            <button
+              onClick={() => fetchReviews(p._id)}
+              className="mt-2 w-full border border-cyan-600 text-cyan-600 py-2 rounded hover:bg-cyan-50"
+            >
+              View Reviews
+            </button>
           </div>
         ))}
+
+        {/* 📝 REVIEWS MODAL */}
+        {showReviews && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+            <div className="bg-white w-full max-w-lg p-6 rounded-xl max-h-[80vh] overflow-y-auto">
+
+              <h2 className="text-xl font-semibold mb-4">Reviews</h2>
+
+              {loadingReviews ? (
+                <p>Loading...</p>
+              ) : selectedProviderReviews.length === 0 ? (
+                <p className="text-gray-500">No reviews yet</p>
+              ) : (
+                selectedProviderReviews.map((r, i) => (
+                  <div key={i} className="border-b py-3">
+
+                    <p className="font-medium">{r.user_name}</p>
+
+                    <p className="text-yellow-500">⭐ {r.rating}</p>
+
+                    <p className="text-gray-600 text-sm">{r.comment}</p>
+
+                    <p className="text-xs text-gray-400">
+                      {new Date(r.created_at).toLocaleString()}
+                    </p>
+
+                  </div>
+                ))
+              )}
+
+              <button
+                onClick={() => setShowReviews(false)}
+                className="mt-4 w-full bg-gray-200 py-2 rounded"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
       </div>
 
