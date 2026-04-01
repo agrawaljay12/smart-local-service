@@ -462,36 +462,38 @@ async def fetch_provider_booking(
 ):
     try:
         params = request.query_params
-
         search = params.get("search", "")
         sort_by = params.get("sort_by", "booking_date")
-        sort_order = int(params.get("sort_order", -1))
+        sort_order = int(params.get("sort_order", 1))
         page = int(params.get("page", 1))
         limit = int(params.get("limit", 12))
-        status_filter = params.get("status", "confirmed")
-
-        # ✅ ROLE CHECK (IMPORTANT)
-        if current_user.get("role") != "provider":
-            raise HTTPException(status_code=403, detail="Access denied")
+        status_filter = params.get("status", "completed")
 
         user_id = str(current_user.get("user_id"))
 
-        if not provider_id:
+        if not user_id:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-        provider = provider_collection.find_one({ "user_id": user_id})
+        # ✅ STEP 1: GET PROVIDER DATA
+        provider = provider_collection.find_one({
+            "user_id": user_id  # stored as string
+        })
 
         if not provider:
-            raise HTTPException(status_code=404, detail="Provider not found")
+            return response.success_response(
+                status=200,
+                message="No provider profile found",
+                data={"bookings": [], "pagination": {}}
+            )
 
-        provider_id = str(provider["_id"])
+        # ✅ STEP 2: USE provider._id
+        provider_id = str(provider["_id"])  # IMPORTANT
+
+        print(user_id)
+        print(provider_id)
 
         skip = (page - 1) * limit
         sort_direction = 1 if sort_order == 1 else -1
-
-        allowed_status = ["pending", "confirmed", "completed", "cancelled"]
-        if status_filter not in allowed_status:
-            status_filter = "confirmed"
 
         allowed_sort_fields = ["booking_date", "price", "payment_date"]
         if sort_by not in allowed_sort_fields:
@@ -499,16 +501,13 @@ async def fetch_provider_booking(
 
         # ---------------- BASE PIPELINE ---------------- #
         base_pipeline = [
-
-            # ✅ MATCH PROVIDER BOOKINGS
             {
                 "$match": {
-                    "provider_id": provider_id,
+                    "provider_id": provider_id,  # ✅ CORRECT MATCH
                     "booking_status": status_filter
                 }
             },
 
-            # ✅ CONVERT USER_ID TO OBJECT ID
             {
                 "$addFields": {
                     "user_id_obj": {
@@ -534,7 +533,7 @@ async def fetch_provider_booking(
                 }
             },
 
-            # ---------------- USER LOOKUP ---------------- #
+            # USER LOOKUP
             {
                 "$lookup": {
                     "from": "users",
@@ -550,7 +549,22 @@ async def fetch_provider_booking(
                 }
             },
 
-            # ---------------- SERVICE LOOKUP ---------------- #
+            # REVIEW LOOKUP
+            {
+                "$lookup": {
+                    "from": "reviews",
+                    "localField": "_id",
+                    "foreignField": "booking_id",
+                    "as": "review"
+                }
+            },
+            {
+                "$addFields": {
+                    "has_review": {"$gt": [{"$size": "$review"}, 0]}
+                }
+            },
+
+            # SERVICE LOOKUP
             {
                 "$lookup": {
                     "from": "service_category",
@@ -567,19 +581,18 @@ async def fetch_provider_booking(
             }
         ]
 
-        # ---------------- SEARCH ---------------- #
+        # SEARCH
         if search:
             base_pipeline.append({
                 "$match": {
                     "$or": [
                         {"user.name": {"$regex": search, "$options": "i"}},
-                        {"user.email": {"$regex": search, "$options": "i"}},
                         {"service.service_name": {"$regex": search, "$options": "i"}}
                     ]
                 }
             })
 
-        # ---------------- DATA PIPELINE ---------------- #
+        # DATA PIPELINE
         data_pipeline = base_pipeline + [
             {"$sort": {sort_by: sort_direction}},
             {"$skip": skip},
@@ -588,43 +601,30 @@ async def fetch_provider_booking(
 
         bookings = list(booking_collection.aggregate(data_pipeline))
 
-        # ---------------- COUNT PIPELINE ---------------- #
-        count_pipeline = base_pipeline + [
-            {"$count": "total"}
-        ]
-
+        # COUNT PIPELINE
+        count_pipeline = base_pipeline + [{"$count": "total"}]
         total_result = list(booking_collection.aggregate(count_pipeline))
         total_bookings = total_result[0]["total"] if total_result else 0
 
-        # ---------------- FORMAT RESPONSE ---------------- #
+        # RESPONSE FORMAT
         booking_data = []
-
         for b in bookings:
             booking_data.append({
                 "booking_id": str(b["_id"]),
-
-                # USER DETAILS (IMPORTANT)
-                "user_name": b.get("user", {}).get("name"),
-                "user_email": b.get("user", {}).get("email"),
-                "user_phone": b.get("user", {}).get("phone"),
-                "user_location": b.get("user", {}).get("location"),
-
-                # SERVICE DETAILS
-                "service_name": b.get("service", {}).get("service_name"),
-
-                # BOOKING DETAILS
+                "customer_name": b.get("user", {}).get("name", "N/A"),
+                "service_name": b.get("service", {}).get("service_name", "N/A"),
                 "price": b.get("price"),
                 "booking_status": b.get("booking_status"),
                 "payment_status": b.get("payment_status"),
-                "payment_date": b.get("payment_date"),
-                "booking_date": b.get("booking_date")
+                "booking_date": b.get("booking_date"),
+                "has_review": b.get("has_review", False)
             })
 
         total_pages = (total_bookings + limit - 1) // limit
 
         return response.success_response(
             status=200,
-            message="Provider bookings fetched successfully",
+            message="Provider bookings fetched",
             data=jsonable_encoder({
                 "bookings": booking_data,
                 "pagination": {
@@ -635,9 +635,6 @@ async def fetch_provider_booking(
                 }
             })
         )
-
-    except HTTPException:
-        raise
 
     except Exception as e:
         return response.error_response(
