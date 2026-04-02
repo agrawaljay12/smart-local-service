@@ -18,7 +18,7 @@ jwt_secret_key = os.getenv("JWT_SECRET_KEY")
 jwt_algorithm = os.getenv("JWT_ALGORITHM")
 
 # create get current user function for extracting and verifying jwt token from request
-def get_current_user(token:str=Depends(oauth2_scheme)):
+def get_current_user(token:str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, jwt_secret_key, algorithms=[jwt_algorithm])
         return payload

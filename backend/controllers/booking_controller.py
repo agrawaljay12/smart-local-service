@@ -467,17 +467,15 @@ async def fetch_provider_booking(
         sort_order = int(params.get("sort_order", 1))
         page = int(params.get("page", 1))
         limit = int(params.get("limit", 12))
-        status_filter = params.get("status", "completed")
+        status_filter = params.get("status", "confirmed")
 
         user_id = str(current_user.get("user_id"))
 
         if not user_id:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
-        # ✅ STEP 1: GET PROVIDER DATA
-        provider = provider_collection.find_one({
-            "user_id": user_id  # stored as string
-        })
+        # ✅ GET PROVIDER
+        provider = provider_collection.find_one({"user_id": user_id})
 
         if not provider:
             return response.success_response(
@@ -486,28 +484,19 @@ async def fetch_provider_booking(
                 data={"bookings": [], "pagination": {}}
             )
 
-        # ✅ STEP 2: USE provider._id
-        provider_id = str(provider["_id"])  # IMPORTANT
-
-        print(user_id)
-        print(provider_id)
+        provider_id = str(provider["_id"])
 
         skip = (page - 1) * limit
         sort_direction = 1 if sort_order == 1 else -1
 
-        allowed_sort_fields = ["booking_date", "price", "payment_date"]
-        if sort_by not in allowed_sort_fields:
-            sort_by = "booking_date"
-
-        # ---------------- BASE PIPELINE ---------------- #
-        base_pipeline = [
+        # ---------------- PIPELINE ---------------- #
+        pipeline = [
             {
                 "$match": {
-                    "provider_id": provider_id,  # ✅ CORRECT MATCH
+                    "provider_id": provider_id,
                     "booking_status": status_filter
                 }
             },
-
             {
                 "$addFields": {
                     "user_id_obj": {
@@ -533,12 +522,21 @@ async def fetch_provider_booking(
                 }
             },
 
-            # USER LOOKUP
+            # ✅ USER LOOKUP (WITH REQUIRED FIELDS)
             {
                 "$lookup": {
                     "from": "users",
-                    "localField": "user_id_obj",
-                    "foreignField": "_id",
+                    "let": {"uid": "$user_id_obj"},
+                    "pipeline": [
+                        {"$match": {"$expr": {"$eq": ["$_id", "$$uid"]}}},
+                        {
+                            "$project": {
+                                "name": 1,
+                                "email": 1,
+                                "phone_no": 1
+                            }
+                        }
+                    ],
                     "as": "user"
                 }
             },
@@ -549,22 +547,7 @@ async def fetch_provider_booking(
                 }
             },
 
-            # REVIEW LOOKUP
-            {
-                "$lookup": {
-                    "from": "reviews",
-                    "localField": "_id",
-                    "foreignField": "booking_id",
-                    "as": "review"
-                }
-            },
-            {
-                "$addFields": {
-                    "has_review": {"$gt": [{"$size": "$review"}, 0]}
-                }
-            },
-
-            # SERVICE LOOKUP
+            # ✅ SERVICE LOOKUP
             {
                 "$lookup": {
                     "from": "service_category",
@@ -578,41 +561,59 @@ async def fetch_provider_booking(
                     "path": "$service",
                     "preserveNullAndEmptyArrays": True
                 }
+            },
+
+            # ✅ REVIEW LOOKUP
+            {
+                "$lookup": {
+                    "from": "reviews",
+                    "localField": "_id",
+                    "foreignField": "booking_id",
+                    "as": "review"
+                }
+            },
+            {
+                "$addFields": {
+                    "has_review": {"$gt": [{"$size": "$review"}, 0]}
+                }
             }
         ]
 
-        # SEARCH
+        # ✅ SEARCH
         if search:
-            base_pipeline.append({
+            pipeline.append({
                 "$match": {
                     "$or": [
                         {"user.name": {"$regex": search, "$options": "i"}},
+                        {"user.email": {"$regex": search, "$options": "i"}},
                         {"service.service_name": {"$regex": search, "$options": "i"}}
                     ]
                 }
             })
 
-        # DATA PIPELINE
-        data_pipeline = base_pipeline + [
+        # ✅ SORT + PAGINATION
+        pipeline += [
             {"$sort": {sort_by: sort_direction}},
             {"$skip": skip},
             {"$limit": limit}
         ]
 
-        bookings = list(booking_collection.aggregate(data_pipeline))
+        bookings = list(booking_collection.aggregate(pipeline))
 
-        # COUNT PIPELINE
-        count_pipeline = base_pipeline + [{"$count": "total"}]
+        # ✅ COUNT
+        count_pipeline = pipeline[:-3] + [{"$count": "total"}]
         total_result = list(booking_collection.aggregate(count_pipeline))
         total_bookings = total_result[0]["total"] if total_result else 0
 
-        # RESPONSE FORMAT
+        # ✅ RESPONSE
         booking_data = []
         for b in bookings:
             booking_data.append({
                 "booking_id": str(b["_id"]),
-                "customer_name": b.get("user", {}).get("name", "N/A"),
-                "service_name": b.get("service", {}).get("service_name", "N/A"),
+                "customer_name": b.get("user", {}).get("name"),
+                "customer_email": b.get("user", {}).get("email"),
+                "customer_phone": b.get("user", {}).get("phone_no"),
+                "service_name": b.get("service", {}).get("service_name"),
                 "price": b.get("price"),
                 "booking_status": b.get("booking_status"),
                 "payment_status": b.get("payment_status"),
@@ -635,6 +636,56 @@ async def fetch_provider_booking(
                 }
             })
         )
+
+    except Exception as e:
+        return response.error_response(
+            status=500,
+            message=str(e)
+        )
+
+#  update status booking 
+async def update_booking_status(booking_id: str,  current_user: dict = Depends(get_current_user)):
+    try:
+        user_id  = str(current_user.get("user_id"))
+
+        if not user_id:
+            raise HTTPException(status_code=http_status.UNAUTHORIZED, detail="Unauthorized")
+        
+        provider = provider_collection.find_one({"user_id": user_id})
+
+        if not provider:
+            raise HTTPException(status_code=http_status.NOT_FOUND, detail="Provider  not found")
+        
+        provider_id = provider["_id"]
+
+        booking = booking_collection.find_one({"_id": ObjectId(booking_id), "provider_id": str(provider_id)})
+
+        if not booking:
+            raise HTTPException(status_code=http_status.NOT_FOUND, detail="Booking not found")
+        
+        if booking["booking_status"] != "confirmed":
+            raise HTTPException(status_code=http_status.BAD_REQUEST, detail="Only confirmed bookings can be updated")
+        
+        # Update booking status to completed
+        result = booking_collection.update_one(
+            {"_id": ObjectId(booking_id),"provider_id": str(provider_id)},
+            {"$set": {"booking_status": "completed"}}
+        )
+
+        if result.modified_count == 1:
+            return response.success_response(
+                status=http_status.OK,
+                message="Booking status updated to completed",
+                data={
+                    "booking_id": booking_id,
+                    "new_status": "completed"
+                }
+            )
+        else:
+            raise HTTPException(status_code=http_status.INTERNAL_SERVER_ERROR, detail="Failed to update booking status")
+        
+    except HTTPException:
+        raise
 
     except Exception as e:
         return response.error_response(
