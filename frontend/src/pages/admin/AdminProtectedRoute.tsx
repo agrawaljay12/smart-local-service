@@ -10,7 +10,7 @@ interface AdminProtectedRouteProps {
  * Only allows access if user is authenticated as admin
  */
 export function AdminProtectedRoute({ children }: AdminProtectedRouteProps) {
-  const adminToken = localStorage.getItem('access_token');
+  const adminToken = sessionStorage.getItem('access_token');
   const user = localStorage.getItem("user");
 
   if (!adminToken || !user) {

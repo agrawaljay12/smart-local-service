@@ -162,10 +162,10 @@ export function ProviderListing() {
   try {
     setPayingId(provider._id);
 
-    const token = localStorage.getItem("access_token");
+    const token = sessionStorage.getItem("access_token");
 
     // 1️⃣ Create Booking (SEND provider_id ✅)
-    const res = await fetch("http://127.0.0.1:8000/api/v1/booking/create", {
+    const res = await fetchWithAuth("http://127.0.0.1:8000/api/v1/booking/create", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -208,7 +208,7 @@ export function ProviderListing() {
           try {
             setPaymentStatus("verifying");
 
-            const verifyRes = await fetch(
+            const verifyRes = await fetchWithAuth(
               "http://127.0.0.1:8000/api/v1/booking/verify",
               {
                   method: "POST",

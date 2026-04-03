@@ -42,7 +42,7 @@ export function ManageService() {
 
   // Check authentication on mount
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
+    const token = sessionStorage.getItem('access_token');
     if (!token) {
       navigate('/provider/auth');
       return;

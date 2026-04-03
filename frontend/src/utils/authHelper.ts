@@ -8,7 +8,7 @@
  * @returns Object with Authorization and Content-Type headers
  */
 export const getAuthHeader = (): Record<string, string> => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json'
   };
@@ -26,7 +26,7 @@ export const getAuthHeader = (): Record<string, string> => {
  * @returns Object with only Authorization header
  */
 export const getAuthHeaderForFormData = (): Record<string, string> => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   const headers: Record<string, string> = {};
   
   if (token) {
@@ -41,7 +41,7 @@ export const getAuthHeaderForFormData = (): Record<string, string> => {
  * @returns true if user has valid token and session
  */
 export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem('access_token');
+  const token = sessionStorage.getItem('access_token');
   const user = localStorage.getItem('user');
   return !!(token && user);
 };
@@ -67,8 +67,8 @@ export const getCurrentUser = () => {
  * @returns true if session has timed out
  */
 export const isSessionExpired = (): boolean => {
-  const sessionStart = localStorage.getItem('sessionStart');
-  const sessionTimeout = localStorage.getItem('sessionTimeout');
+  const sessionStart = sessionStorage.getItem('sessionStart');
+  const sessionTimeout = sessionStorage.getItem('sessionTimeout');
   
   if (!sessionStart || !sessionTimeout) {
     return false;
@@ -85,7 +85,7 @@ export const isSessionExpired = (): boolean => {
  * Clear all auth data
  */
 export const clearAuthData = () => {
-  localStorage.removeItem('access_token');
+  sessionStorage.removeItem('access_token');
   localStorage.removeItem('user');
   localStorage.removeItem('rememberMe');
   localStorage.removeItem('sessionStart');
@@ -96,7 +96,7 @@ export const clearAuthData = () => {
  * Refresh session timestamp
  */
 export const refreshSession = () => {
-  localStorage.setItem('sessionStart', new Date().getTime().toString());
+  sessionStorage.setItem('sessionStart', new Date().getTime().toString());
 };
 
 // Function to refresh access token using refresh token
@@ -118,12 +118,12 @@ export const refreshAccessToken = async () => {
 
     const data = await res.json();
 
-    localStorage.setItem("access_token", data.access_token);
+    sessionStorage.setItem("access_token", data.access_token);
 
     return data.access_token;
   } catch (error) {
     // logout if refresh fails
-    localStorage.clear();
+    sessionStorage.clear();
     window.location.href = "/auth/signin";
   }
 };
