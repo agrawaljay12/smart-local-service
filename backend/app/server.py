@@ -1,6 +1,8 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+
 
 def create_server() -> FastAPI:
     app = FastAPI(
@@ -24,6 +26,11 @@ def create_server() -> FastAPI:
 
     # Mount static files (if needed)
     # "Mounting" means adding a complete "independent" application in a specific path, that then takes care of handling all the sub-paths.
-    app.mount("/static", StaticFiles(directory="static"), name="static")
+
+    if not os.path.exists('static/uploads'):
+        os.makedirs('static/uploads')
+
+    app.mount("/static", StaticFiles(directory='static'), name="static")
+    app.mount("/files", StaticFiles(directory='static/uploads'), name="files")
     
     return app
