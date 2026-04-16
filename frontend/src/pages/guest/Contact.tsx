@@ -7,7 +7,7 @@ const PRIMARY_COLOR = "#0891b2";
 export function GuestContact() {
   const { theme } = useTheme();
 
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ name: string; email: string; message: string }>({
     name: "",
     email: "",
     message: ""
