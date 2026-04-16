@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -27,13 +28,30 @@ def create_server() -> FastAPI:
         allow_headers=["*"],              # Allow all headers
     )
 
+    @app.options("/{rest_of_path:path}")
+    async def preflight_handler():
+        return {"status": "ok"}
+
     # Mount static files (if needed)
     # "Mounting" means adding a complete "independent" application in a specific path, that then takes care of handling all the sub-paths.
     
-    if not os.path.exists('static/uploads'):
-        os.makedirs('static/uploads')
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    static_dir = BASE_DIR / "static"
+    uploads_dir = static_dir / "uploads"
 
-    app.mount("/static", StaticFiles(directory='static'), name="static")
-    app.mount("/files", StaticFiles(directory='static/uploads'), name="files")
+    if not os.path.exists(uploads_dir):
+        os.makedirs(uploads_dir)
+
+    if not os.path.exists('static/uploads/provider'):
+        os.makedirs('static/uploads/provider')
+
+    if not os.path.exists('static/uploads/user'):
+        os.makedirs('static/uploads/user')
+
+    if static_dir.exists():
+        app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+    if uploads_dir.exists():
+        app.mount("/files", StaticFiles(directory=uploads_dir), name="files")
     
     return app
