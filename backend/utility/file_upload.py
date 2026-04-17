@@ -26,7 +26,7 @@ async def save_file(file: UploadFile, folder:str):
         buffer.write(content)         # Write the content to the file
 
     # save the path of the saved file to the specified folder   
-    file_location = f"http://localhost:8000/static/uploads/{folder}/{unique_filename}"
+    file_location = f"https://servicehub-i8ef.onrender.com/static/uploads/{folder}/{unique_filename}"
     return file_location
 
 
