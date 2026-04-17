@@ -1,12 +1,9 @@
-import { refreshAccessToken } from "./authHelper";
-
-
 export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   const token = localStorage.getItem("access_token");
 
   if (!token) {
     window.location.href = "/auth/signin";
-    return;
+    throw new Error("No token found");
   }
 
   const response = await fetch(url, {
@@ -19,10 +16,11 @@ export const fetchWithAuth = async (url: string, options: RequestInit = {}) => {
   });
 
   if (response.status === 401) {
-    // Token invalid or expired → logout
-    await refreshAccessToken();
-    return;
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/auth/signin";
+    throw new Error("Unauthorized");
   }
 
-  return response;
+  return response; // ✅ always returns Response
 };
