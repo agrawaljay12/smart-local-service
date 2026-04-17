@@ -162,15 +162,17 @@ export function ProviderListing() {
   try {
     setPayingId(provider._id);
 
-    const token = sessionStorage.getItem("access_token");
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      alert("Please login first");
+      window.location.href = "/login";
+      return;
+    }
 
     // 1️⃣ Create Booking (SEND provider_id ✅)
     const res = await fetchWithAuth("https://servicehub-i8ef.onrender.com/api/v1/booking/create", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
       body: JSON.stringify({
         provider_id: provider._id,
       }),
@@ -256,8 +258,14 @@ export function ProviderListing() {
     };
 
     const rzp = new window.Razorpay(options);
-    rzp.open();
 
+    rzp.on("payment.failed", function (response: any) {
+      console.error("Payment Failed:", response);
+      alert("Payment failed");
+    });
+
+    rzp.open();
+    
   } catch (err) {
     console.error(err);
     alert("Something went wrong");
