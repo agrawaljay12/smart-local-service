@@ -185,7 +185,7 @@ export function EditProfile() {
                       src={
                           preview?.startsWith("http")
                             ? preview
-                            : `https://furnspace.onrender.com${preview}`
+                            : `https://servicehub-i8ef.onrender.com${preview}`
                         }
                       className="w-full h-full object-cover"
                     />
