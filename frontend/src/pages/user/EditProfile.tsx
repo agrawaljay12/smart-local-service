@@ -16,7 +16,8 @@ export function EditProfile() {
     name: "",
     email: "",
     phone_no: "",
-    address: ""
+    address: "",
+    profile: ""
   });
 
   const [profileFile, setProfileFile] = useState<File | null>(null);
@@ -61,7 +62,8 @@ export function EditProfile() {
           name: userData.name || "",
           email: userData.email || "",
           phone_no: userData.phone_no || "",
-          address: userData.address || ""
+          address: userData.address || "",
+          profile: userData.profile || ""
         });
 
         // ✅ set profile preview
@@ -106,10 +108,10 @@ export function EditProfile() {
 
       const formData = new FormData();
 
-      formData.append("name", form.name);
-      formData.append("email", form.email);
-      formData.append("phone_no", form.phone_no);
-      formData.append("address", form.address);
+      if (form.name) formData.append("name", form.name);
+      if (form.email) formData.append("email", form.email);
+      if (form.phone_no) formData.append("phone_no", form.phone_no);
+      if (form.address) formData.append("address", form.address);
 
       if (profileFile) {
         formData.append("file", profileFile);
@@ -180,7 +182,11 @@ export function EditProfile() {
                 <div className="w-28 h-28 rounded-full border-2 border-[#0891b2] overflow-hidden flex items-center justify-center">
                   {preview ? (
                     <img
-                      src={preview}
+                      src={
+                          preview?.startsWith("http")
+                            ? preview
+                            : `https://furnspace.onrender.com${preview}`
+                        }
                       className="w-full h-full object-cover"
                     />
                   ) : (
