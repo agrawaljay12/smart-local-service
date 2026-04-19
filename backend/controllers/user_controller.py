@@ -399,20 +399,20 @@ async def edit_user_by_id(
                 detail=message.USER_NOT_FOUND
             )
 
-        if name:
+        if name is not None:
             update_data["name"] = name
 
-        if email:
+        if email is not None:
             update_data["email"] = email
 
-        if phone_no:
+        if phone_no is not None:
             update_data["phone_no"] = phone_no
 
-        if address:
+        if address is not None:
             update_data["address"] = address
 
         # Profile image upload
-        if file:
+        if file is not None:
             profile_url = await save_file(file, "users")  # your existing function
             update_data["profile"] = profile_url
 
