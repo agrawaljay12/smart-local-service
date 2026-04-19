@@ -422,6 +422,7 @@ async def edit_user_by_id(
                 status_code=400,
                 detail="No data provided to update"
             )
+        print(update_data)
 
         result = user_collection.update_one(
             {"_id": ObjectId(user_id)},
